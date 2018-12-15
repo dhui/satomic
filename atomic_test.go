@@ -302,18 +302,14 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 		txCreator   atomic.TxCreator
 		expectedErr error
 	}{
-		{name: "nil db", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin()
-			return m
-		}, getDb: func() (*sql.DB, sqlmock.Sqlmock) {
-			_, _sqlmock := getDb()
-			return nil, _sqlmock
-		}, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: atomic.DefaultTxCreator,
+		{name: "nil db", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
+			getDb: func() (*sql.DB, sqlmock.Sqlmock) {
+				_, _sqlmock := getDb()
+				return nil, _sqlmock
+			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: atomic.DefaultTxCreator,
 			expectedErr: atomic.ErrNeedsDb},
-		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin()
-			return m
-		}, getDb: getDb, savepointer: nil, txCreator: atomic.DefaultTxCreator,
+		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
+			getDb: getDb, savepointer: nil, txCreator: atomic.DefaultTxCreator,
 			expectedErr: atomic.ErrNeedsSavepointer},
 		{name: "begin err", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin().WillReturnError(beginErr)
@@ -340,6 +336,10 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 			if _, err := atomic.NewQuerierWithTxCreator(ctx, db, tc.savepointer,
 				sql.TxOptions{}, tc.txCreator); err != tc.expectedErr {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
+			}
+
+			if err := _sqlmock.ExpectationsWereMet(); err != nil {
+				t.Error(err)
 			}
 		})
 	}

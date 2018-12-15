@@ -38,29 +38,21 @@ func TestNewQuerier(t *testing.T) {
 		savepointer savepointers.Savepointer
 		expectedErr error
 	}{
-		{name: "nil db", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin()
-			return m
-		}, getDb: func() (*sqlx.DB, sqlmock.Sqlmock) {
-			_, _sqlmock := getDb()
-			return nil, _sqlmock
-		}, savepointer: mock.NewSavepointer(ioutil.Discard, true),
-			expectedErr: atomic.ErrNeedsDb},
-		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin()
-			return m
-		}, getDb: getDb, savepointer: nil,
-			expectedErr: atomic.ErrNeedsSavepointer},
+		{name: "nil db", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
+			getDb: func() (*sqlx.DB, sqlmock.Sqlmock) {
+				_, _sqlmock := getDb()
+				return nil, _sqlmock
+			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: atomic.ErrNeedsDb},
+		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
+			getDb: getDb, savepointer: nil, expectedErr: atomic.ErrNeedsSavepointer},
 		{name: "begin err", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin().WillReturnError(beginErr)
 			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
-			expectedErr: beginErr},
+		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: beginErr},
 		{name: "success", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin()
 			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
-			expectedErr: nil},
+		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: nil},
 	}
 
 	ctx := context.Background()
@@ -72,6 +64,10 @@ func TestNewQuerier(t *testing.T) {
 			if _, err := asqlx.NewQuerier(ctx, db, tc.savepointer,
 				sql.TxOptions{}); err != tc.expectedErr {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
+			}
+
+			if err := _sqlmock.ExpectationsWereMet(); err != nil {
+				t.Error(err)
 			}
 		})
 	}
