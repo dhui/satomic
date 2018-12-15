@@ -1,5 +1,5 @@
-// Package atomic provides a easy way to nest atomic SQL updates using transactions and savepoints
-package atomic
+// Package satomic provides a easy way to nest atomic SQL updates using transactions and savepoints
+package satomic
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package atomic
+package satomic
 
 import (
 	"context"

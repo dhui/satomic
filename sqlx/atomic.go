@@ -10,13 +10,13 @@ import (
 )
 
 import (
-	atomic "github.com/dhui/satomic"
+	"github.com/dhui/satomic"
 	"github.com/dhui/satomic/savepointers"
 )
 
 // Querier provides an interface to interact with a SQL DB within an atomic transaction or savepoint
 type Querier interface {
-	atomic.Querier
+	satomic.Querier
 
 	// sqlx methods (common between sqlx.DB and sqlx.Tx)
 	Get(interface{}, string, ...interface{}) error
@@ -30,7 +30,7 @@ type Querier interface {
 }
 
 type wrappedQuerier struct {
-	atomic.Querier
+	satomic.Querier
 	tx *sqlx.Tx
 }
 
@@ -41,10 +41,10 @@ func (wq *wrappedQuerier) Get(dest interface{}, query string, args ...interface{
 func (wq *wrappedQuerier) GetContext(ctx context.Context, dest interface{}, query string,
 	args ...interface{}) error {
 	if wq == nil {
-		return atomic.ErrNilQuerier
+		return satomic.ErrNilQuerier
 	}
 	if wq.tx == nil {
-		return atomic.ErrInvalidQuerier
+		return satomic.ErrInvalidQuerier
 	}
 	return wq.tx.GetContext(ctx, dest, query, args...)
 }
@@ -56,10 +56,10 @@ func (wq *wrappedQuerier) Select(dest interface{}, query string, args ...interfa
 func (wq *wrappedQuerier) SelectContext(ctx context.Context, dest interface{}, query string,
 	args ...interface{}) error {
 	if wq == nil {
-		return atomic.ErrNilQuerier
+		return satomic.ErrNilQuerier
 	}
 	if wq.tx == nil {
-		return atomic.ErrInvalidQuerier
+		return satomic.ErrInvalidQuerier
 	}
 	return wq.tx.SelectContext(ctx, dest, query, args...)
 }
@@ -71,10 +71,10 @@ func (wq *wrappedQuerier) Queryx(query string, args ...interface{}) (*sqlx.Rows,
 func (wq *wrappedQuerier) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows,
 	error) {
 	if wq == nil {
-		return nil, atomic.ErrNilQuerier
+		return nil, satomic.ErrNilQuerier
 	}
 	if wq.tx == nil {
-		return nil, atomic.ErrInvalidQuerier
+		return nil, satomic.ErrInvalidQuerier
 	}
 	return wq.tx.QueryxContext(ctx, query, args...)
 }
@@ -97,7 +97,7 @@ func (wq *wrappedQuerier) QueryRowxContext(ctx context.Context, query string, ar
 func NewQuerier(ctx context.Context, db *sqlx.DB, savepointer savepointers.Savepointer,
 	txOpts sql.TxOptions) (Querier, error) {
 	if db == nil {
-		return nil, atomic.ErrNeedsDb
+		return nil, satomic.ErrNeedsDb
 	}
 
 	var tx *sqlx.Tx
@@ -111,7 +111,7 @@ func NewQuerier(ctx context.Context, db *sqlx.DB, savepointer savepointers.Savep
 		return tx.Tx, nil
 	}
 
-	q, err := atomic.NewQuerierWithTxCreator(ctx, db.DB, savepointer, txOpts, txCreator)
+	q, err := satomic.NewQuerierWithTxCreator(ctx, db.DB, savepointer, txOpts, txCreator)
 	if err != nil {
 		return nil, err
 	}

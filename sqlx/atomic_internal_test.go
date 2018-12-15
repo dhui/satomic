@@ -13,7 +13,7 @@ import (
 )
 
 import (
-	atomic "github.com/dhui/satomic"
+	"github.com/dhui/satomic"
 	"github.com/dhui/satomic/savepointers/mock"
 )
 
@@ -48,8 +48,8 @@ func TestWrappedQuerierGet(t *testing.T) {
 		wq          *wrappedQuerier
 		expectedErr error
 	}{
-		{name: "nil wrappedQuerier", wq: nilWrappedQuerier, expectedErr: atomic.ErrNilQuerier},
-		{name: "nil tx", wq: &wrappedQuerier{Querier: wq.Querier, tx: nil}, expectedErr: atomic.ErrInvalidQuerier},
+		{name: "nil wrappedQuerier", wq: nilWrappedQuerier, expectedErr: satomic.ErrNilQuerier},
+		{name: "nil tx", wq: &wrappedQuerier{Querier: wq.Querier, tx: nil}, expectedErr: satomic.ErrInvalidQuerier},
 		{name: "success", wq: wq, expectedErr: nil},
 	}
 
@@ -91,8 +91,8 @@ func TestWrappedQuerierSelect(t *testing.T) {
 		wq          *wrappedQuerier
 		expectedErr error
 	}{
-		{name: "nil wrappedQuerier", wq: nilWrappedQuerier, expectedErr: atomic.ErrNilQuerier},
-		{name: "nil tx", wq: &wrappedQuerier{Querier: wq.Querier, tx: nil}, expectedErr: atomic.ErrInvalidQuerier},
+		{name: "nil wrappedQuerier", wq: nilWrappedQuerier, expectedErr: satomic.ErrNilQuerier},
+		{name: "nil tx", wq: &wrappedQuerier{Querier: wq.Querier, tx: nil}, expectedErr: satomic.ErrInvalidQuerier},
 		{name: "success", wq: wq, expectedErr: nil},
 	}
 
@@ -134,8 +134,8 @@ func TestWrappedQuerierQueryx(t *testing.T) {
 		wq          *wrappedQuerier
 		expectedErr error
 	}{
-		{name: "nil wrappedQuerier", wq: nilWrappedQuerier, expectedErr: atomic.ErrNilQuerier},
-		{name: "nil tx", wq: &wrappedQuerier{Querier: wq.Querier, tx: nil}, expectedErr: atomic.ErrInvalidQuerier},
+		{name: "nil wrappedQuerier", wq: nilWrappedQuerier, expectedErr: satomic.ErrNilQuerier},
+		{name: "nil tx", wq: &wrappedQuerier{Querier: wq.Querier, tx: nil}, expectedErr: satomic.ErrInvalidQuerier},
 		{name: "success", wq: wq, expectedErr: nil},
 	}
 

@@ -1,4 +1,4 @@
-package atomic_test
+package satomic_test
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 )
 
 import (
-	atomic "github.com/dhui/satomic"
+	"github.com/dhui/satomic"
 	"github.com/dhui/satomic/savepointers/mock"
 )
 
@@ -46,40 +46,40 @@ func Example() {
 
 	ctx := context.Background()
 	// For actual code, use a real Savepointer instead of a mocked one
-	q, err := atomic.NewQuerier(ctx, db, mock.NewSavepointer(os.Stdout, true), sql.TxOptions{})
+	q, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(os.Stdout, true), sql.TxOptions{})
 	if err != nil {
 		fmt.Println("Error creating querier:", err)
 		return
 	}
-	if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+	if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 		var dummy int
 		if err := q.QueryRowContext(ctx, "SELECT 1;").Scan(&dummy); err != nil {
 			fmt.Println(err)
 		}
 		// SAVEPOINT 1
-		if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+		if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 			return q.QueryRowContext(ctx, "SELECT 2;").Scan(&dummy)
 		}); err != nil {
 			fmt.Println(err)
 		}
 		// SAVEPOINT 2
-		if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+		if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 			return q.QueryRowContext(ctx, "SELECT 3;").Scan(&dummy)
 		}); err != nil {
 			fmt.Println(err)
 		}
 		// SAVEPOINT 3
-		if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+		if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 			if err := q.QueryRowContext(ctx, "SELECT 4;").Scan(&dummy); err != nil {
 				fmt.Println(err)
 			}
 			// SAVEPOINT 4
-			if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+			if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 				if err := q.QueryRowContext(ctx, "SELECT 5;").Scan(&dummy); err != nil {
 					fmt.Println(err)
 				}
 				// SAVEPOINT 5
-				if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+				if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 					return q.QueryRowContext(ctx, "SELECT 6;").Scan(&dummy)
 				}); err != nil {
 					fmt.Println(err)

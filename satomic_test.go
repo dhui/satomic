@@ -1,4 +1,4 @@
-package atomic_test
+package satomic_test
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 )
 
 import (
-	atomic "github.com/dhui/satomic"
-	"github.com/dhui/satomic/atomictest"
+	"github.com/dhui/satomic"
+	"github.com/dhui/satomic/satomictest"
 	"github.com/dhui/satomic/savepointers"
 	"github.com/dhui/satomic/savepointers/mock"
 )
@@ -30,7 +30,7 @@ func TestDefaultQuerierAtomicBeginErr(t *testing.T) {
 	_sqlmock.ExpectBegin().WillReturnError(expectedErr)
 
 	ctx := context.Background()
-	if _, err := atomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true),
+	if _, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true),
 		sql.TxOptions{}); err != expectedErr {
 		t.Error("Didn't get the expected error:", err, "!=", expectedErr)
 	}
@@ -38,18 +38,18 @@ func TestDefaultQuerierAtomicBeginErr(t *testing.T) {
 
 func TestDefaultQuerierAtomicNoSavepoint(t *testing.T) {
 	selectErr := errors.New("select 1 error")
-	expectedSelectErr := atomictest.NewError(selectErr, nil)
+	expectedSelectErr := satomictest.NewError(selectErr, nil)
 
 	rbErr := errors.New("rollback error")
-	expectedRbErr := atomictest.NewError(selectErr, rbErr)
+	expectedRbErr := satomictest.NewError(selectErr, rbErr)
 
 	commitErr := errors.New("commit error")
-	expectedCommitErr := atomictest.NewError(nil, commitErr)
+	expectedCommitErr := satomictest.NewError(nil, commitErr)
 
 	testCases := []struct {
 		name        string
 		mocker      func(sqlmock.Sqlmock) sqlmock.Sqlmock
-		expectedErr *atomic.Error
+		expectedErr *satomic.Error
 	}{
 		{name: "success", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin()
@@ -88,14 +88,14 @@ func TestDefaultQuerierAtomicNoSavepoint(t *testing.T) {
 
 			_sqlmock = tc.mocker(_sqlmock)
 
-			q, err := atomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true), sql.TxOptions{})
+			q, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true), sql.TxOptions{})
 			if err != nil {
 				t.Fatal("Error creating Querier:", err)
 			}
-			if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+			if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 				var dummy int
 				return q.QueryRowContext(ctx, "SELECT 1;").Scan(&dummy)
-			}); !atomictest.ErrsEq(err, tc.expectedErr) {
+			}); !satomictest.ErrsEq(err, tc.expectedErr) {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}
 
@@ -108,13 +108,13 @@ func TestDefaultQuerierAtomicNoSavepoint(t *testing.T) {
 
 func TestDefaultQuerierAtomicNoSavepointPanic(t *testing.T) {
 	rbErr := errors.New("rollback error")
-	expectedRbErr := atomictest.NewError(nil, rbErr)
+	expectedRbErr := satomictest.NewError(nil, rbErr)
 
 	testCases := []struct {
 		name        string
 		mocker      func(sqlmock.Sqlmock) sqlmock.Sqlmock
 		panicVal    interface{}
-		expectedErr *atomic.Error
+		expectedErr *satomic.Error
 	}{
 		{name: "rollback success", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin()
@@ -141,7 +141,7 @@ func TestDefaultQuerierAtomicNoSavepointPanic(t *testing.T) {
 			_sqlmock = tc.mocker(_sqlmock)
 
 			ctx := context.Background()
-			q, err := atomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true),
+			q, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true),
 				sql.TxOptions{})
 			if err != nil {
 				t.Fatal("Error creating Querier:", err)
@@ -151,13 +151,13 @@ func TestDefaultQuerierAtomicNoSavepointPanic(t *testing.T) {
 					t.Errorf("Didn't get the expected panic value: %+v != %+v", r, tc.panicVal)
 				}
 			}()
-			if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+			if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 				var dummy int
 				if err := q.QueryRowContext(ctx, "SELECT 1;").Scan(&dummy); err != nil {
 					t.Error(err)
 				}
 				panic(tc.panicVal)
-			}); !atomictest.ErrsEq(err, tc.expectedErr) {
+			}); !satomictest.ErrsEq(err, tc.expectedErr) {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}
 
@@ -170,16 +170,16 @@ func TestDefaultQuerierAtomicNoSavepointPanic(t *testing.T) {
 
 func TestDefaultQuerierAtomicSingleSavepointReleased(t *testing.T) {
 	rbErr := errors.New("rollback error")
-	expectedRbErr := atomictest.NewError(nil, rbErr)
+	expectedRbErr := satomictest.NewError(nil, rbErr)
 
 	createErr := errors.New("savepoint error")
-	expectedCreateErr := atomictest.NewError(nil, createErr)
+	expectedCreateErr := satomictest.NewError(nil, createErr)
 
 	selectErr := errors.New("select 2 error")
-	expectedSelectErr := atomictest.NewError(selectErr, nil)
+	expectedSelectErr := satomictest.NewError(selectErr, nil)
 
 	releaseErr := errors.New("release error")
-	expectedReleaseErr := atomictest.NewError(selectErr, releaseErr)
+	expectedReleaseErr := satomictest.NewError(selectErr, releaseErr)
 
 	savepointer := func(release bool) *mock.Savepointer {
 		return mock.NewSavepointer(ioutil.Discard, release)
@@ -189,7 +189,7 @@ func TestDefaultQuerierAtomicSingleSavepointReleased(t *testing.T) {
 		name        string
 		savepointer *mock.Savepointer
 		mocker      func(sqlmock.Sqlmock) sqlmock.Sqlmock
-		expectedErr *atomic.Error
+		expectedErr *satomic.Error
 	}{
 		{name: "success", savepointer: savepointer(true), mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin()
@@ -256,19 +256,19 @@ func TestDefaultQuerierAtomicSingleSavepointReleased(t *testing.T) {
 			_sqlmock = tc.mocker(_sqlmock)
 
 			ctx := context.Background()
-			q, err := atomic.NewQuerier(ctx, db, tc.savepointer, sql.TxOptions{})
+			q, err := satomic.NewQuerier(ctx, db, tc.savepointer, sql.TxOptions{})
 			if err != nil {
 				t.Fatal("Error creating Querier:", err)
 			}
-			if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+			if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 				var dummy int
 				if err := q.QueryRowContext(ctx, "SELECT 1;").Scan(&dummy); err != nil {
 					t.Log("error in select 1:", err)
 					return err
 				}
-				if err := q.Atomic(func(ctx context.Context, q atomic.Querier) error {
+				if err := q.Atomic(func(ctx context.Context, q satomic.Querier) error {
 					return q.QueryRowContext(ctx, "SELECT 2;").Scan(&dummy)
-				}); !atomictest.ErrsEq(err, tc.expectedErr) {
+				}); !satomictest.ErrsEq(err, tc.expectedErr) {
 					t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 				}
 				return nil
@@ -299,28 +299,28 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 		mocker      func(sqlmock.Sqlmock) sqlmock.Sqlmock
 		getDb       func() (*sql.DB, sqlmock.Sqlmock)
 		savepointer savepointers.Savepointer
-		txCreator   atomic.TxCreator
+		txCreator   satomic.TxCreator
 		expectedErr error
 	}{
 		{name: "nil db", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
 			getDb: func() (*sql.DB, sqlmock.Sqlmock) {
 				_, _sqlmock := getDb()
 				return nil, _sqlmock
-			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: atomic.DefaultTxCreator,
-			expectedErr: atomic.ErrNeedsDb},
+			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: satomic.DefaultTxCreator,
+			expectedErr: satomic.ErrNeedsDb},
 		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
-			getDb: getDb, savepointer: nil, txCreator: atomic.DefaultTxCreator,
-			expectedErr: atomic.ErrNeedsSavepointer},
+			getDb: getDb, savepointer: nil, txCreator: satomic.DefaultTxCreator,
+			expectedErr: satomic.ErrNeedsSavepointer},
 		{name: "begin err", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin().WillReturnError(beginErr)
 			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: atomic.DefaultTxCreator,
-			expectedErr: beginErr},
+		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+			txCreator: satomic.DefaultTxCreator, expectedErr: beginErr},
 		{name: "success", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin()
 			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: atomic.DefaultTxCreator,
-			expectedErr: nil},
+		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+			txCreator: satomic.DefaultTxCreator, expectedErr: nil},
 		{name: "success - nil TxCreator", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin()
 			return m
@@ -333,7 +333,7 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 			db, _sqlmock := tc.getDb()
 			_sqlmock = tc.mocker(_sqlmock)
 
-			if _, err := atomic.NewQuerierWithTxCreator(ctx, db, tc.savepointer,
+			if _, err := satomic.NewQuerierWithTxCreator(ctx, db, tc.savepointer,
 				sql.TxOptions{}, tc.txCreator); err != tc.expectedErr {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}

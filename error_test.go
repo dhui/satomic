@@ -1,4 +1,4 @@
-package atomic_test
+package satomic_test
 
 import (
 	"errors"
@@ -6,24 +6,24 @@ import (
 )
 
 import (
-	atomic "github.com/dhui/satomic"
-	"github.com/dhui/satomic/atomictest"
+	"github.com/dhui/satomic"
+	"github.com/dhui/satomic/satomictest"
 )
 
 func TestError(t *testing.T) {
 	testCases := []struct {
 		name        string
-		err         *atomic.Error
+		err         *satomic.Error
 		expectedStr string
 	}{
 		{name: "nil Error", err: nil, expectedStr: ""},
-		{name: "nil Err and Atomic", err: atomictest.NewError(nil, nil),
+		{name: "nil Err and Atomic", err: satomictest.NewError(nil, nil),
 			expectedStr: `Err: <nil> Atomic: <nil>`},
-		{name: "nil Err, non-nil Atomic", err: atomictest.NewError(nil, errors.New("atomic")),
+		{name: "nil Err, non-nil Atomic", err: satomictest.NewError(nil, errors.New("atomic")),
 			expectedStr: `Err: <nil> Atomic: "atomic"`},
-		{name: "non-nil Err, nil Atomic", err: atomictest.NewError(errors.New("err"), nil),
+		{name: "non-nil Err, nil Atomic", err: satomictest.NewError(errors.New("err"), nil),
 			expectedStr: `Err: "err" Atomic: <nil>`},
-		{name: "non-nil Err and Atomic", err: atomictest.NewError(errors.New("err"), errors.New("atomic")),
+		{name: "non-nil Err and Atomic", err: satomictest.NewError(errors.New("err"), errors.New("atomic")),
 			expectedStr: `Err: "err" Atomic: "atomic"`},
 	}
 

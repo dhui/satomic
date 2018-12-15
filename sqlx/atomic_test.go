@@ -14,7 +14,7 @@ import (
 )
 
 import (
-	atomic "github.com/dhui/satomic"
+	"github.com/dhui/satomic"
 	"github.com/dhui/satomic/savepointers"
 	"github.com/dhui/satomic/savepointers/mock"
 	asqlx "github.com/dhui/satomic/sqlx"
@@ -42,9 +42,9 @@ func TestNewQuerier(t *testing.T) {
 			getDb: func() (*sqlx.DB, sqlmock.Sqlmock) {
 				_, _sqlmock := getDb()
 				return nil, _sqlmock
-			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: atomic.ErrNeedsDb},
+			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: satomic.ErrNeedsDb},
 		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
-			getDb: getDb, savepointer: nil, expectedErr: atomic.ErrNeedsSavepointer},
+			getDb: getDb, savepointer: nil, expectedErr: satomic.ErrNeedsSavepointer},
 		{name: "begin err", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin().WillReturnError(beginErr)
 			return m
