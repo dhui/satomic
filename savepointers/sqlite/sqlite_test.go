@@ -1,4 +1,4 @@
-package savepointerstests
+package sqlite_test
 
 import (
 	"database/sql"
