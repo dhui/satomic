@@ -1,0 +1,28 @@
+language: go
+sudo: false
+
+env:
+  global:
+    - GOLANGCI_LINT_VERSION=v1.12.3
+
+matrix:
+  allow_failures:
+  - go: master
+  include:
+  # Supported versions of Go: https://golang.org/dl/
+  - go: "1.11.x"
+  - go: master
+
+before_install:
+  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $GOPATH/bin $GOLANGCI_LINT_VERSION
+
+before_script:
+  - golangci-lint run
+
+script:
+  # TODO: get test coverage to work appropriate across packages.
+  # e.g. when tests are testing code in another package. Use the -coverpkg flag
+  - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -X fix
