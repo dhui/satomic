@@ -4,6 +4,56 @@
 
 satomic is a Golang package that makes managing nested SQL transactions/savepoints easier
 
+## Example usage
+
+```golang
+package main
+
+import (
+    "context"
+    "database/sql"
+    "github.com/dhui/satomic"
+    "github.com/dhui/satomic/savepointers/postgres"
+)
+
+// Error handling omitted for brevity. Actual code should handle errors
+func main() {
+    ctx := context.Background()
+    var db *sql.DB  // Use an actual db
+
+    // savepointer should match the db driver used
+    q, _ := satomic.NewQuerier(ctx, db, postgres.Savepointer{}, sql.TxOptions{})
+
+    // In transaction
+    q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+        var dummy int
+        q.QueryRowContext(ctx, "SELECT 1;").Scan(&dummy)
+
+        // In first savepoint
+        q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+            return q.QueryRowContext(ctx, "SELECT 2;").Scan(&dummy)
+        })
+
+        // In second savepoint
+        q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+            q.QueryRowContext(ctx, "SELECT 3;").Scan(&dummy)
+
+            // In third savepoint
+            q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+                q.QueryRowContext(ctx, "SELECT 4;").Scan(&dummy)
+                return nil
+            })
+
+            return nil
+        })
+
+        return nil
+    })
+}
+```
+
+A more complete example can be found in the [GoDoc](https://godoc.org/github.com/dhui/satomic)
+
 ## What's with the name?
 Go **S**QL **atomic** => satomic
 
