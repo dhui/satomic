@@ -19,24 +19,10 @@ import (
 	"github.com/dhui/satomic/savepointers/mock"
 )
 
-func TestDefaultQuerierAtomicBeginErr(t *testing.T) {
-	db, _sqlmock, err := sqlmock.New()
-	if err != nil {
-		t.Fatal("Error creating sqlmock:", err)
-	}
-	defer db.Close() // nolint:errcheck
-
-	expectedErr := errors.New("begin error")
-	_sqlmock.ExpectBegin().WillReturnError(expectedErr)
-
-	ctx := context.Background()
-	if _, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true),
-		sql.TxOptions{}); err != expectedErr {
-		t.Error("Didn't get the expected error:", err, "!=", expectedErr)
-	}
-}
-
 func TestDefaultQuerierAtomicNoSavepoint(t *testing.T) {
+	beginErr := errors.New("begin error")
+	expectedBeginErr := satomictest.NewError(nil, beginErr)
+
 	selectErr := errors.New("select 1 error")
 	expectedSelectErr := satomictest.NewError(selectErr, nil)
 
@@ -57,6 +43,10 @@ func TestDefaultQuerierAtomicNoSavepoint(t *testing.T) {
 			m.ExpectCommit()
 			return m
 		}, expectedErr: nil},
+		{name: "begin err", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+			m.ExpectBegin().WillReturnError(beginErr)
+			return m
+		}, expectedErr: expectedBeginErr},
 		{name: "commit error", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 			m.ExpectBegin()
 			m.ExpectQuery("SELECT 1;").WillReturnRows(sqlmock.NewRows([]string{""}).AddRow(1))
@@ -284,7 +274,7 @@ func TestDefaultQuerierAtomicSingleSavepointReleased(t *testing.T) {
 }
 
 func TestNewQuerierWithTxCreator(t *testing.T) {
-	beginErr := errors.New("begin error")
+	noopMocker := func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m }
 
 	getDb := func() (*sql.DB, sqlmock.Sqlmock) {
 		db, _sqlmock, err := sqlmock.New()
@@ -302,29 +292,18 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 		txCreator   satomic.TxCreator
 		expectedErr error
 	}{
-		{name: "nil db", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
+		{name: "nil db", mocker: noopMocker,
 			getDb: func() (*sql.DB, sqlmock.Sqlmock) {
 				_, _sqlmock := getDb()
 				return nil, _sqlmock
 			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: satomic.DefaultTxCreator,
 			expectedErr: satomic.ErrNeedsDb},
-		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
-			getDb: getDb, savepointer: nil, txCreator: satomic.DefaultTxCreator,
-			expectedErr: satomic.ErrNeedsSavepointer},
-		{name: "begin err", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin().WillReturnError(beginErr)
-			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
-			txCreator: satomic.DefaultTxCreator, expectedErr: beginErr},
-		{name: "success", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin()
-			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+		{name: "nil savepointer", mocker: noopMocker, getDb: getDb, savepointer: nil,
+			txCreator: satomic.DefaultTxCreator, expectedErr: satomic.ErrNeedsSavepointer},
+		{name: "success", mocker: noopMocker, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
 			txCreator: satomic.DefaultTxCreator, expectedErr: nil},
-		{name: "success - nil TxCreator", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin()
-			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: nil, expectedErr: nil},
+		{name: "success - nil TxCreator", mocker: noopMocker, getDb: getDb,
+			savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: nil, expectedErr: nil},
 	}
 
 	ctx := context.Background()

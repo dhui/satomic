@@ -3,6 +3,7 @@ package sqlx
 import (
 	"context"
 	"database/sql"
+	"errors"
 )
 
 import (
@@ -12,6 +13,14 @@ import (
 import (
 	"github.com/dhui/satomic"
 	"github.com/dhui/satomic/savepointers"
+)
+
+var (
+	// ErrDuplicateTransaction is the canonical error value when a Querier already has a transaction but
+	// another transaction is being created
+	ErrDuplicateTransaction = errors.New("Querier already has a transaction")
+	// ErrDbMismatch is the canonical error value when a Querier's DB doesn't match the DB for creating a transaction
+	ErrDbMismatch = errors.New("Querier DB doesn't match DB for transaction creation")
 )
 
 // Querier provides an interface to interact with a SQL DB within an atomic transaction or savepoint
@@ -31,6 +40,7 @@ type Querier interface {
 
 type wrappedQuerier struct {
 	satomic.Querier
+	db *sqlx.DB
 	tx *sqlx.Tx
 }
 
@@ -43,8 +53,11 @@ func (wq *wrappedQuerier) GetContext(ctx context.Context, dest interface{}, quer
 	if wq == nil {
 		return satomic.ErrNilQuerier
 	}
-	if wq.tx == nil {
+	if wq.db == nil {
 		return satomic.ErrInvalidQuerier
+	}
+	if wq.tx == nil {
+		return wq.db.GetContext(ctx, dest, query, args...)
 	}
 	return wq.tx.GetContext(ctx, dest, query, args...)
 }
@@ -58,8 +71,11 @@ func (wq *wrappedQuerier) SelectContext(ctx context.Context, dest interface{}, q
 	if wq == nil {
 		return satomic.ErrNilQuerier
 	}
-	if wq.tx == nil {
+	if wq.db == nil {
 		return satomic.ErrInvalidQuerier
+	}
+	if wq.tx == nil {
+		return wq.db.SelectContext(ctx, dest, query, args...)
 	}
 	return wq.tx.SelectContext(ctx, dest, query, args...)
 }
@@ -73,8 +89,11 @@ func (wq *wrappedQuerier) QueryxContext(ctx context.Context, query string, args 
 	if wq == nil {
 		return nil, satomic.ErrNilQuerier
 	}
-	if wq.tx == nil {
+	if wq.db == nil {
 		return nil, satomic.ErrInvalidQuerier
+	}
+	if wq.tx == nil {
+		return wq.db.QueryxContext(ctx, query, args...)
 	}
 	return wq.tx.QueryxContext(ctx, query, args...)
 }
@@ -87,10 +106,36 @@ func (wq *wrappedQuerier) QueryRowxContext(ctx context.Context, query string, ar
 	if wq == nil {
 		return nil
 	}
-	if wq.tx == nil {
+	if wq.db == nil {
 		return nil
 	}
+	if wq.tx == nil {
+		return wq.db.QueryRowxContext(ctx, query, args...)
+	}
 	return wq.tx.QueryRowxContext(ctx, query, args...)
+}
+
+func (wq *wrappedQuerier) txCreator(ctx context.Context, db *sql.DB, txOpts sql.TxOptions) (*sql.Tx, error) {
+	if wq == nil {
+		return nil, satomic.ErrNilQuerier
+	}
+	if wq.db == nil {
+		return nil, satomic.ErrInvalidQuerier
+	}
+	if wq.tx != nil {
+		return nil, ErrDuplicateTransaction
+	}
+
+	if wq.db.DB != db {
+		return nil, ErrDbMismatch
+	}
+
+	tx, err := wq.db.BeginTxx(ctx, &txOpts)
+	if err != nil {
+		return nil, err
+	}
+	wq.tx = tx
+	return tx.Tx, nil
 }
 
 // NewQuerier creates a new Querier
@@ -100,21 +145,12 @@ func NewQuerier(ctx context.Context, db *sqlx.DB, savepointer savepointers.Savep
 		return nil, satomic.ErrNeedsDb
 	}
 
-	var tx *sqlx.Tx
-
-	txCreator := func(context.Context, *sql.DB, sql.TxOptions) (*sql.Tx, error) {
-		var err error
-		tx, err = db.BeginTxx(ctx, &txOpts)
-		if err != nil {
-			return nil, err
-		}
-		return tx.Tx, nil
-	}
-
-	q, err := satomic.NewQuerierWithTxCreator(ctx, db.DB, savepointer, txOpts, txCreator)
+	wq := &wrappedQuerier{db: db}
+	q, err := satomic.NewQuerierWithTxCreator(ctx, db.DB, savepointer, txOpts, wq.txCreator)
 	if err != nil {
 		return nil, err
 	}
+	wq.Querier = q
 
-	return &wrappedQuerier{Querier: q, tx: tx}, nil
+	return wq, nil
 }

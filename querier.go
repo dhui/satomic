@@ -47,6 +47,9 @@ type Querier interface {
 
 type stackEl struct {
 	ctx           context.Context
+	db            *sql.DB
+	txCreator     TxCreator
+	txOpts        sql.TxOptions
 	tx            *sql.Tx
 	savepointer   savepointers.Savepointer
 	savepointName string
@@ -60,8 +63,11 @@ func (el *stackEl) ExecContext(ctx context.Context, query string, args ...interf
 	if el == nil {
 		return nil, ErrNilQuerier
 	}
-	if el.tx == nil {
+	if el.db == nil {
 		return nil, ErrInvalidQuerier
+	}
+	if el.tx == nil {
+		return el.db.ExecContext(ctx, query, args...)
 	}
 	return el.tx.ExecContext(ctx, query, args...)
 }
@@ -74,8 +80,11 @@ func (el *stackEl) QueryContext(ctx context.Context, query string, args ...inter
 	if el == nil {
 		return nil, ErrNilQuerier
 	}
-	if el.tx == nil {
+	if el.db == nil {
 		return nil, ErrInvalidQuerier
+	}
+	if el.tx == nil {
+		return el.db.QueryContext(ctx, query, args...)
 	}
 	return el.tx.QueryContext(ctx, query, args...)
 }
@@ -87,17 +96,26 @@ func (el *stackEl) QueryRowContext(ctx context.Context, query string, args ...in
 	if el == nil {
 		return nil
 	}
-	if el.tx == nil {
+	if el.db == nil {
 		return nil
+	}
+	if el.tx == nil {
+		return el.db.QueryRowContext(ctx, query, args...)
 	}
 	return el.tx.QueryRowContext(ctx, query, args...)
 }
 
+// using named returns so the deferred function call can modify the returned error
 func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
+	// el should never be modified, instead a nextEl should be created and used
+
 	if el == nil {
 		return newError(nil, ErrNilQuerier)
 	}
-	if el.tx == nil {
+	if el.db == nil {
+		return newError(nil, ErrInvalidQuerier)
+	}
+	if el.txCreator == nil {
 		return newError(nil, ErrInvalidQuerier)
 	}
 	if el.savepointer == nil {
@@ -105,6 +123,21 @@ func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
 	}
 	if f == nil {
 		return nil
+	}
+
+	nextEl := *el
+	if nextEl.tx == nil {
+		tx, txErr := nextEl.txCreator(nextEl.ctx, nextEl.db, nextEl.txOpts)
+		if txErr != nil {
+			return newError(nil, txErr)
+		}
+		nextEl.tx = tx
+	} else {
+		nextEl.savepointName = savepointers.GenSavepointName()
+		if _, execErr := nextEl.tx.ExecContext(nextEl.ctx,
+			nextEl.savepointer.Create(nextEl.savepointName)); execErr != nil {
+			return newError(nil, execErr)
+		}
 	}
 
 	/***************************************************************
@@ -119,39 +152,36 @@ func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
 					panic(r)
 				}()
 			}
-			if err.Err == nil {
-				return
-			}
 
-			if el.usingSavepoint() {
+			if nextEl.usingSavepoint() {
 				// Rollback savepoint on error
-				if _, execErr := el.tx.ExecContext(el.ctx,
-					el.savepointer.Rollback(el.savepointName)); execErr != nil {
+				if _, execErr := nextEl.tx.ExecContext(nextEl.ctx,
+					nextEl.savepointer.Rollback(nextEl.savepointName)); execErr != nil {
 					err.Atomic = execErr
 					return
 				}
 			} else {
 				// Rollback transaction on error
-				if rbErr := el.tx.Rollback(); rbErr != nil {
+				if rbErr := nextEl.tx.Rollback(); rbErr != nil {
 					err.Atomic = rbErr
 					return
 				}
 			}
 		} else {
-			if el.usingSavepoint() {
+			if nextEl.usingSavepoint() {
 				// Release savepoint on success
-				releaseStmt := el.savepointer.Release(el.savepointName)
+				releaseStmt := nextEl.savepointer.Release(nextEl.savepointName)
 				if releaseStmt == "" {
 					// Some SQL RDBMSs don't support releasing savepoints
 					return
 				}
-				if _, execErr := el.tx.ExecContext(el.ctx, releaseStmt); execErr != nil {
+				if _, execErr := nextEl.tx.ExecContext(nextEl.ctx, releaseStmt); execErr != nil {
 					err = newError(nil, execErr)
 					return
 				}
 			} else {
 				// Commit transaction on success
-				if commitErr := el.tx.Commit(); commitErr != nil {
+				if commitErr := nextEl.tx.Commit(); commitErr != nil {
 					err = newError(nil, commitErr)
 					return
 				}
@@ -159,15 +189,7 @@ func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
 		}
 	}()
 
-	if el.usingSavepoint() {
-		if _, execErr := el.tx.ExecContext(el.ctx, el.savepointer.Create(el.savepointName)); execErr != nil {
-			err = newError(nil, execErr)
-			return
-		}
-	}
-	nextEl := &stackEl{ctx: el.ctx, tx: el.tx, savepointer: el.savepointer, savepointName: savepointers.GenSavepointName()}
-
-	cbErr := f(nextEl.ctx, nextEl)
+	cbErr := f(nextEl.ctx, &nextEl)
 	if cbErr != nil {
 		err = newError(cbErr, nil)
 	}
@@ -207,9 +229,6 @@ func NewQuerierWithTxCreator(ctx context.Context, db *sql.DB, savepointer savepo
 	if txCreator == nil {
 		txCreator = DefaultTxCreator
 	}
-	tx, err := txCreator(ctx, db, txOpts)
-	if err != nil {
-		return nil, err
-	}
-	return &stackEl{ctx: ctx, tx: tx, savepointer: savepointer}, nil
+	return &stackEl{ctx: ctx, db: db, txCreator: txCreator, txOpts: txOpts, tx: nil, savepointer: savepointer,
+		savepointName: ""}, nil
 }

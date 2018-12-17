@@ -3,7 +3,6 @@ package sqlx_test
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"io/ioutil"
 	"testing"
 )
@@ -21,7 +20,7 @@ import (
 )
 
 func TestNewQuerier(t *testing.T) {
-	beginErr := errors.New("begin error")
+	noopMocker := func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m }
 
 	getDb := func() (*sqlx.DB, sqlmock.Sqlmock) {
 		db, _sqlmock, err := sqlmock.New()
@@ -38,21 +37,14 @@ func TestNewQuerier(t *testing.T) {
 		savepointer savepointers.Savepointer
 		expectedErr error
 	}{
-		{name: "nil db", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
-			getDb: func() (*sqlx.DB, sqlmock.Sqlmock) {
-				_, _sqlmock := getDb()
-				return nil, _sqlmock
-			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: satomic.ErrNeedsDb},
-		{name: "nil savepointer", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m },
-			getDb: getDb, savepointer: nil, expectedErr: satomic.ErrNeedsSavepointer},
-		{name: "begin err", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin().WillReturnError(beginErr)
-			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: beginErr},
-		{name: "success", mocker: func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
-			m.ExpectBegin()
-			return m
-		}, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: nil},
+		{name: "nil db", mocker: noopMocker, getDb: func() (*sqlx.DB, sqlmock.Sqlmock) {
+			_, _sqlmock := getDb()
+			return nil, _sqlmock
+		}, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: satomic.ErrNeedsDb},
+		{name: "nil savepointer", mocker: noopMocker, getDb: getDb, savepointer: nil,
+			expectedErr: satomic.ErrNeedsSavepointer},
+		{name: "success", mocker: noopMocker, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+			expectedErr: nil},
 	}
 
 	ctx := context.Background()
