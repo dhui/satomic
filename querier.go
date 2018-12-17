@@ -13,14 +13,14 @@ import (
 
 var (
 	// ErrNeedsDb is the canonical error value when an attempt to create a Querier doesn't specify a DB
-	ErrNeedsDb = errors.New("Error, need DB to create Querier")
+	ErrNeedsDb = errors.New("Need DB to create Querier")
 	// ErrNeedsSavepointer is the canonical error value when an attempt to create a Querier doesn't specify a
 	// Savepointer
-	ErrNeedsSavepointer = errors.New("Error, need Savepointer to create Querier")
+	ErrNeedsSavepointer = errors.New("Need Savepointer to create Querier")
 	// ErrNilQuerier is the canonical error value for when a nil Querier is used
-	ErrNilQuerier = errors.New("Error, nil Querier")
+	ErrNilQuerier = errors.New("nil Querier")
 	// ErrInvalidQuerier is the canonical error value for when an invalid Querier is used
-	ErrInvalidQuerier = errors.New("Error, invalid Querier")
+	ErrInvalidQuerier = errors.New("Invalid Querier")
 )
 
 // Querier provides an interface to interact with a SQL DB within an atomic transaction or savepoint
