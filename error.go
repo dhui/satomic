@@ -7,7 +7,10 @@ import (
 // Error implements the error interface and is used to differentiate between Querier.Atomic() errors
 // and Querier.Atomic() callback function errors
 type Error struct {
-	Err    error
+	// Err is an error returned from Querier.Atomic()'s callback function
+	Err error
+	// Atomic is an error from within Querier.Atomic()'s implementation.
+	// Usually such an error is the result of an improperly configured/created Querier or a DB error.
 	Atomic error
 }
 
