@@ -24,22 +24,22 @@ func main() {
     // savepointer should match the db driver used
     q, _ := satomic.NewQuerier(ctx, db, postgres.Savepointer{}, sql.TxOptions{})
 
-    // In transaction
     q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+        // In transaction
         var dummy int
         q.QueryRowContext(ctx, "SELECT 1;").Scan(&dummy)
 
-        // In first savepoint
         q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+            // In first savepoint
             return q.QueryRowContext(ctx, "SELECT 2;").Scan(&dummy)
         })
 
-        // In second savepoint
         q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+            // In second savepoint
             q.QueryRowContext(ctx, "SELECT 3;").Scan(&dummy)
 
-            // In third savepoint
             q.Atomic(func(ctx context.Context, q satomic.Querier) error {
+                // In third savepoint
                 q.QueryRowContext(ctx, "SELECT 4;").Scan(&dummy)
                 return nil
             })
