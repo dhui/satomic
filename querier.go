@@ -36,6 +36,9 @@ type Querier interface {
 
 	// Atomic runs any SQL statement(s) with the given querier atomicly by wrapping the statement(s)
 	// in a transaction or savepoint.
+	// Any error returned by the callback function (or panic) will result in the rollback of the transaction
+	// or rollback to the previous savepoint as appropriate.
+	// Otherwise, the previous savepoint will be released or the transaction will be committed.
 	//
 	// Note: Atomic() is not safe for concurrent use by multiple goroutines. e.g. your SQL statements may be
 	// interleaved and thus nonsensical.
