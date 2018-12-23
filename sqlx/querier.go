@@ -23,11 +23,10 @@ var (
 	ErrDbMismatch = errors.New("Querier DB doesn't match DB for transaction creation")
 )
 
-// Querier provides an interface to interact with a SQL DB within an atomic transaction or savepoint
-type Querier interface {
-	satomic.Querier
-
-	// sqlx methods (common between sqlx.DB and sqlx.Tx)
+// QuerierBase provides an interface containing sqlx methods shared between sqlx.DB and sqlx.Tx
+//
+// Doesn't embed the satomic.QuerierBase interface to avoid issues with duplicate methods
+type QuerierBase interface {
 	Get(interface{}, string, ...interface{}) error
 	GetContext(context.Context, interface{}, string, ...interface{}) error
 	Select(interface{}, string, ...interface{}) error
@@ -36,6 +35,12 @@ type Querier interface {
 	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	QueryRowx(query string, args ...interface{}) *sqlx.Row
 	QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row
+}
+
+// Querier provides an interface to interact with a SQL DB within an atomic transaction or savepoint
+type Querier interface {
+	QuerierBase
+	satomic.Querier
 }
 
 type wrappedQuerier struct {

@@ -23,16 +23,23 @@ var (
 	ErrInvalidQuerier = errors.New("Invalid Querier")
 )
 
-// Querier provides an interface to interact with a SQL DB within an atomic transaction or savepoint
-type Querier interface {
-	// database/sql methods (common between sql.DB, sql.Tx, and sql.Conn)
+// QuerierBase provides an interface containing database/sql methods shared between
+// sql.DB, sql.Tx, and sql.Conn
+type QuerierBase interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	QueryRow(query string, args ...interface{}) *sql.Row
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-	// TODO: Add Prepare(), PrepareContext(), Stmt(), and StmtContext()
+	// TODO:
+	// Should support for sql.Conn be dropped?
+	// Should support for Prepare(), PrepareContext(), Stmt(), and StmtContext() be added?
+}
+
+// Querier provides an interface to interact with a SQL DB within an atomic transaction or savepoint
+type Querier interface {
+	QuerierBase
 
 	// Atomic runs any SQL statement(s) with the given querier atomicly by wrapping the statement(s)
 	// in a transaction or savepoint.
