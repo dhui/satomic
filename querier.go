@@ -41,7 +41,7 @@ type QuerierBase interface {
 type Querier interface {
 	QuerierBase
 
-	// Atomic runs any SQL statement(s) with the given querier atomicly by wrapping the statement(s)
+	// Atomic runs any SQL statement(s) with the given querier atomically by wrapping the statement(s)
 	// in a transaction or savepoint.
 	// Any error returned by the callback function (or panic) will result in the rollback of the transaction
 	// or rollback to the previous savepoint as appropriate.
@@ -50,12 +50,35 @@ type Querier interface {
 	// Note: Atomic() is not safe for concurrent use by multiple goroutines. e.g. your SQL statements may be
 	// interleaved and thus nonsensical.
 	Atomic(f func(context.Context, Querier) error) *Error
+
+	// Context gets the Context associated w/ the Querier
+	Context() context.Context
+	// Copy makes a shallow copy of the Querier
+	Copy() Querier
+	// DB gets the DB associated w/ the Querier. A valid Querier should never return nil.
+	DB() *sql.DB
+	// NewTx creates a new sql.Tx
+	NewTx(context.Context, *sql.DB, sql.TxOptions) (*sql.Tx, error)
+	// TxOpts gets the sql.TxOptions to use with the Querier's TxCreator
+	TxOpts() sql.TxOptions
+	// Tx gets the sql.Tx associated w/ the Querier. A valid Querier may return nil.
+	Tx() *sql.Tx
+	// SetTx sets the sql.Tx associated w/ the Querier
+	SetTx(*sql.Tx)
+	// Savepointer gets the Savepointer associated w/ the Querier
+	Savepointer() savepointers.Savepointer
+	// UsingSavepoint returns true if the Querier is using a savepoint and false otherwise
+	UsingSavepoint() bool
+	// SavepointName gets the name of the savepoint associated w/ the Querier. An empty string
+	// will be returned if it's not using a savepoint.
+	SavepointName() string
+	// SetSavepointName sets the Querier's savepoint name
+	SetSavepointName(string)
 }
 
 type querier struct {
 	ctx           context.Context
 	db            *sql.DB
-	txCreator     TxCreator
 	txOpts        sql.TxOptions
 	tx            *sql.Tx
 	savepointer   savepointers.Savepointer
@@ -114,116 +137,104 @@ func (q *querier) QueryRowContext(ctx context.Context, query string, args ...int
 
 // using named returns so the deferred function call can modify the returned error
 func (q *querier) Atomic(f func(context.Context, Querier) error) (err *Error) {
-	// q should never be modified, instead a nextQ should be created and used
-
-	if q == nil {
-		return newError(nil, ErrNilQuerier)
-	}
-	if q.db == nil {
-		return newError(nil, ErrInvalidQuerier)
-	}
-	if q.txCreator == nil {
-		return newError(nil, ErrInvalidQuerier)
-	}
-	if q.savepointer == nil {
-		return newError(nil, ErrInvalidQuerier)
-	}
-	if f == nil {
-		return nil
-	}
-
-	nextQ := *q
-	if nextQ.tx == nil {
-		tx, txErr := nextQ.txCreator(nextQ.ctx, nextQ.db, nextQ.txOpts)
-		if txErr != nil {
-			return newError(nil, txErr)
-		}
-		nextQ.tx = tx
-	} else {
-		nextQ.savepointName = savepointers.GenSavepointName()
-		if _, execErr := nextQ.tx.ExecContext(nextQ.ctx,
-			nextQ.savepointer.Create(nextQ.savepointName)); execErr != nil {
-			return newError(nil, execErr)
-		}
-	}
-
-	/***************************************************************
-	* After this comment/deferred call, named returns must be used *
-	***************************************************************/
-	defer func() {
-		// TODO: don't do anything if we're dealing with an empty orig error
-		if r := recover(); err != nil || r != nil {
-			if r != nil {
-				// re-throw panic
-				defer func() {
-					panic(r)
-				}()
-			}
-
-			if nextQ.usingSavepoint() {
-				// Rollback savepoint on error
-				if _, execErr := nextQ.tx.ExecContext(nextQ.ctx,
-					nextQ.savepointer.Rollback(nextQ.savepointName)); execErr != nil {
-					err.Atomic = execErr
-					return
-				}
-			} else {
-				// Rollback transaction on error
-				if rbErr := nextQ.tx.Rollback(); rbErr != nil {
-					err.Atomic = rbErr
-					return
-				}
-			}
-		} else {
-			if nextQ.usingSavepoint() {
-				// Release savepoint on success
-				releaseStmt := nextQ.savepointer.Release(nextQ.savepointName)
-				if releaseStmt == "" {
-					// Some SQL RDBMSs don't support releasing savepoints
-					return
-				}
-				if _, execErr := nextQ.tx.ExecContext(nextQ.ctx, releaseStmt); execErr != nil {
-					err = newError(nil, execErr)
-					return
-				}
-			} else {
-				// Commit transaction on success
-				if commitErr := nextQ.tx.Commit(); commitErr != nil {
-					err = newError(nil, commitErr)
-					return
-				}
-			}
-		}
-	}()
-
-	cbErr := f(nextQ.ctx, &nextQ)
-	if cbErr != nil {
-		err = newError(cbErr, nil)
-	}
-
-	return // nolint:nakedret
+	return Atomic(q, f)
 }
 
-// usingSavepoint determines whether or not the querier is using a savepoint or transaction
-func (q *querier) usingSavepoint() bool { return q.savepointName != "" }
+// Context gets the querier's context.Context
+func (q *querier) Context() context.Context {
+	if q == nil {
+		return nil
+	}
+	return q.ctx
+}
 
-// TxCreator is used to create transactions for a Querier
-type TxCreator func(context.Context, *sql.DB, sql.TxOptions) (*sql.Tx, error)
+// Copy returns a shallow copy of the querier
+func (q *querier) Copy() Querier {
+	if q == nil {
+		return nil
+	}
+	cpy := *q
+	return &cpy
+}
 
-// DefaultTxCreator is the default TxCreator to be used
-func DefaultTxCreator(ctx context.Context, db *sql.DB, txOpts sql.TxOptions) (*sql.Tx, error) {
+// DB gets the querier's db
+func (q *querier) DB() *sql.DB {
+	if q == nil {
+		return nil
+	}
+	return q.db
+}
+
+// NewTx creates a new sql.Tx
+func (q *querier) NewTx(ctx context.Context, db *sql.DB, txOpts sql.TxOptions) (*sql.Tx, error) {
+	if q == nil {
+		return nil, ErrNilQuerier
+	}
+	if db == nil {
+		return nil, ErrNeedsDb
+	}
 	return db.BeginTx(ctx, &txOpts)
+}
+
+// TxOpts gets the querier's transaction options
+func (q *querier) TxOpts() sql.TxOptions {
+	if q == nil {
+		return sql.TxOptions{}
+	}
+	return q.txOpts
+}
+
+// Tx gets the querier'stx
+func (q *querier) Tx() *sql.Tx {
+	if q == nil {
+		return nil
+	}
+	return q.tx
+}
+
+// SetTx sets the querier's tx
+func (q *querier) SetTx(tx *sql.Tx) {
+	if q == nil {
+		return
+	}
+	q.tx = tx
+}
+
+// Savepointer gets the querier's savepointer
+func (q *querier) Savepointer() savepointers.Savepointer {
+	if q == nil {
+		return nil
+	}
+	return q.savepointer
+}
+
+// UsingSavepoint determines whether or not the querier is using a savepoint or transaction
+func (q *querier) UsingSavepoint() bool {
+	if q == nil {
+		return false
+	}
+	return q.savepointName != ""
+}
+
+// SavepointName gets the querier's savepoint name
+func (q *querier) SavepointName() string {
+	if q == nil {
+		return ""
+	}
+	return q.savepointName
+}
+
+// SetSavepointName sets the savepoint name for the querier
+func (q *querier) SetSavepointName(name string) {
+	if q == nil {
+		return
+	}
+	q.savepointName = name
 }
 
 // NewQuerier creates a new Querier
 func NewQuerier(ctx context.Context, db *sql.DB, savepointer savepointers.Savepointer,
 	txOpts sql.TxOptions) (Querier, error) {
-	return NewQuerierWithTxCreator(ctx, db, savepointer, txOpts, DefaultTxCreator)
-}
-
-// NewQuerierWithTxCreator creates a new Querier, allowing the transaction creation to be customized
-func NewQuerierWithTxCreator(ctx context.Context, db *sql.DB, savepointer savepointers.Savepointer,
-	txOpts sql.TxOptions, txCreator TxCreator) (Querier, error) {
 	if db == nil {
 		return nil, ErrNeedsDb
 	}
@@ -233,9 +244,5 @@ func NewQuerierWithTxCreator(ctx context.Context, db *sql.DB, savepointer savepo
 	if err := db.PingContext(ctx); err != nil {
 		return nil, err
 	}
-	if txCreator == nil {
-		txCreator = DefaultTxCreator
-	}
-	return &querier{ctx: ctx, db: db, txCreator: txCreator, txOpts: txOpts, tx: nil, savepointer: savepointer,
-		savepointName: ""}, nil
+	return &querier{ctx: ctx, db: db, txOpts: txOpts, tx: nil, savepointer: savepointer, savepointName: ""}, nil
 }

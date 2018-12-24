@@ -216,14 +216,14 @@ func TestQuerierAtomicErrs(t *testing.T) {
 		f           func(context.Context, Querier) error
 		expectedErr *Error
 	}{
-		{name: "nil querier", q: nilQuerier, f: cb, expectedErr: newError(nil, ErrNilQuerier)},
-		{name: "nil db", q: &querier{db: nil, txCreator: DefaultTxCreator, savepointer: savepointer}, f: cb,
+		{name: "nil querier", q: nilQuerier, f: cb, expectedErr: newError(nil, ErrInvalidQuerier)},
+		{name: "nil db", q: &querier{db: nil, savepointer: savepointer}, f: cb,
 			expectedErr: newError(nil, ErrInvalidQuerier)},
-		{name: "nil txCreator", q: &querier{db: &db, txCreator: nil, savepointer: nil}, f: cb,
+		{name: "nil txCreator", q: &querier{db: &db, savepointer: nil}, f: cb,
 			expectedErr: newError(nil, ErrInvalidQuerier)},
-		{name: "nil savepointer", q: &querier{db: &db, txCreator: DefaultTxCreator, savepointer: nil}, f: cb,
+		{name: "nil savepointer", q: &querier{db: &db, savepointer: nil}, f: cb,
 			expectedErr: newError(nil, ErrInvalidQuerier)},
-		{name: "nil callback", q: &querier{db: &db, txCreator: DefaultTxCreator, savepointer: savepointer}, f: nil,
+		{name: "nil callback", q: &querier{db: &db, savepointer: savepointer}, f: nil,
 			expectedErr: nil},
 	}
 

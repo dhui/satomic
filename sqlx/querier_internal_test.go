@@ -64,7 +64,7 @@ func genWrappedQueriers(t *testing.T) (wqNilDb *wrappedQuerier, nilDbSqlmock sql
 		m.ExpectQuery("").WillReturnRows(genTestRows())
 		return m
 	})
-	_, err := wqWithTx.txCreator(ctx, wqWithTx.db.DB, sql.TxOptions{})
+	_, err := wqWithTx.NewTx(ctx, wqWithTx.db.DB, sql.TxOptions{})
 	if err != nil {
 		t.Fatal("Could not start transaction:", err)
 	}
@@ -215,7 +215,7 @@ func TestWrappedQuerierTxCreator(t *testing.T) {
 		m.ExpectBegin()
 		return m
 	})
-	_, err := wqWithTx.txCreator(ctx, wqWithTx.db.DB, sql.TxOptions{})
+	_, err := wqWithTx.NewTx(ctx, wqWithTx.db.DB, sql.TxOptions{})
 	if err != nil {
 		t.Fatal("Could not start transaction:", err)
 	}
@@ -246,7 +246,7 @@ func TestWrappedQuerierTxCreator(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := tc.wq.txCreator(ctx, tc.db, sql.TxOptions{}); err != tc.expectedErr {
+			if _, err := tc.wq.NewTx(ctx, tc.db, sql.TxOptions{}); err != tc.expectedErr {
 				t.Errorf("Didn't get expected error: %+v != %+v", err, tc.expectedErr)
 			}
 

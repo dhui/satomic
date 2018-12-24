@@ -15,7 +15,6 @@ import (
 import (
 	"github.com/dhui/satomic"
 	"github.com/dhui/satomic/satomictest"
-	"github.com/dhui/satomic/savepointers"
 	"github.com/dhui/satomic/savepointers/mock"
 )
 
@@ -264,57 +263,6 @@ func TestDefaultQuerierAtomicSingleSavepointReleased(t *testing.T) {
 				return nil
 			}); err != nil {
 				t.Error(err)
-			}
-
-			if err := _sqlmock.ExpectationsWereMet(); err != nil {
-				t.Error(err)
-			}
-		})
-	}
-}
-
-func TestNewQuerierWithTxCreator(t *testing.T) {
-	noopMocker := func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m }
-
-	getDb := func() (*sql.DB, sqlmock.Sqlmock) {
-		db, _sqlmock, err := sqlmock.New()
-		if err != nil {
-			t.Fatal("Error creating sqlmock:", err)
-		}
-		return db, _sqlmock
-	}
-
-	testCases := []struct {
-		name        string
-		mocker      func(sqlmock.Sqlmock) sqlmock.Sqlmock
-		getDb       func() (*sql.DB, sqlmock.Sqlmock)
-		savepointer savepointers.Savepointer
-		txCreator   satomic.TxCreator
-		expectedErr error
-	}{
-		{name: "nil db", mocker: noopMocker,
-			getDb: func() (*sql.DB, sqlmock.Sqlmock) {
-				_, _sqlmock := getDb()
-				return nil, _sqlmock
-			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: satomic.DefaultTxCreator,
-			expectedErr: satomic.ErrNeedsDb},
-		{name: "nil savepointer", mocker: noopMocker, getDb: getDb, savepointer: nil,
-			txCreator: satomic.DefaultTxCreator, expectedErr: satomic.ErrNeedsSavepointer},
-		{name: "success", mocker: noopMocker, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
-			txCreator: satomic.DefaultTxCreator, expectedErr: nil},
-		{name: "success - nil TxCreator", mocker: noopMocker, getDb: getDb,
-			savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: nil, expectedErr: nil},
-	}
-
-	ctx := context.Background()
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			db, _sqlmock := tc.getDb()
-			_sqlmock = tc.mocker(_sqlmock)
-
-			if _, err := satomic.NewQuerierWithTxCreator(ctx, db, tc.savepointer,
-				sql.TxOptions{}, tc.txCreator); err != tc.expectedErr {
-				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}
 
 			if err := _sqlmock.ExpectationsWereMet(); err != nil {

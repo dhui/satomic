@@ -122,17 +122,29 @@ func (wq *wrappedQuerier) QueryRowxContext(ctx context.Context, query string, ar
 	return wq.tx.QueryRowxContext(ctx, query, args...)
 }
 
+func (wq *wrappedQuerier) Copy() satomic.Querier {
+	if wq == nil {
+		return nil
+	}
+	cpy := *wq
+	cpy.Querier = wq.Querier.Copy()
+	return &cpy
+}
+
 func (wq *wrappedQuerier) Atomicx(f func(context.Context, Querier) error) *satomic.Error {
-	return wq.Atomic(func(ctx context.Context, q satomic.Querier) error {
-		// Only works b/c the root tx object is set by the TxCreator...
-		// Has the side-effect of running all subsequent queries in a transaction which is not good...
+	return satomic.Atomic(wq, func(ctx context.Context, q satomic.Querier) error {
+		if nextWq, ok := q.(*wrappedQuerier); ok {
+			return f(ctx, nextWq)
+		}
+		// Unexpected Copy() failure, re-wrap querier and try to proceed as normal
+		// *Should* work w/o any issues since NewTx() should properly set the transaction for the correct wrappedQuerier
 		nextWq := *wq
 		nextWq.Querier = q
 		return f(ctx, &nextWq)
 	})
 }
 
-func (wq *wrappedQuerier) txCreator(ctx context.Context, db *sql.DB, txOpts sql.TxOptions) (*sql.Tx, error) {
+func (wq *wrappedQuerier) NewTx(ctx context.Context, db *sql.DB, txOpts sql.TxOptions) (*sql.Tx, error) {
 	if wq == nil {
 		return nil, satomic.ErrNilQuerier
 	}
@@ -163,7 +175,7 @@ func NewQuerier(ctx context.Context, db *sqlx.DB, savepointer savepointers.Savep
 	}
 
 	wq := &wrappedQuerier{db: db}
-	q, err := satomic.NewQuerierWithTxCreator(ctx, db.DB, savepointer, txOpts, wq.txCreator)
+	q, err := satomic.NewQuerier(ctx, db.DB, savepointer, txOpts)
 	if err != nil {
 		return nil, err
 	}
