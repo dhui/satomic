@@ -41,6 +41,8 @@ type QuerierBase interface {
 type Querier interface {
 	QuerierBase
 	satomic.Querier
+
+	Atomicx(f func(context.Context, Querier) error) *satomic.Error
 }
 
 type wrappedQuerier struct {
@@ -118,6 +120,16 @@ func (wq *wrappedQuerier) QueryRowxContext(ctx context.Context, query string, ar
 		return wq.db.QueryRowxContext(ctx, query, args...)
 	}
 	return wq.tx.QueryRowxContext(ctx, query, args...)
+}
+
+func (wq *wrappedQuerier) Atomicx(f func(context.Context, Querier) error) *satomic.Error {
+	return wq.Atomic(func(ctx context.Context, q satomic.Querier) error {
+		// Only works b/c the root tx object is set by the TxCreator...
+		// Has the side-effect of running all subsequent queries in a transaction which is not good...
+		nextWq := *wq
+		nextWq.Querier = q
+		return f(ctx, &nextWq)
+	})
 }
 
 func (wq *wrappedQuerier) txCreator(ctx context.Context, db *sql.DB, txOpts sql.TxOptions) (*sql.Tx, error) {

@@ -204,7 +204,7 @@ func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
 	return // nolint:nakedret
 }
 
-// useSavepoint determines whether or not the stack element is using a savepoint or transaction
+// usingSavepoint determines whether or not the stack element is using a savepoint or transaction
 func (el *stackEl) usingSavepoint() bool { return el.savepointName != "" }
 
 // TxCreator is used to create transactions for a Querier
