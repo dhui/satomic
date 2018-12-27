@@ -26,7 +26,7 @@ func errsEq(a, b *Error) bool {
 	return false
 }
 
-func genStackEl(t *testing.T, mocker func(sqlmock.Sqlmock) sqlmock.Sqlmock) (*stackEl, sqlmock.Sqlmock) {
+func genQuerier(t *testing.T, mocker func(sqlmock.Sqlmock) sqlmock.Sqlmock) (*querier, sqlmock.Sqlmock) {
 	savepointer := mock.NewSavepointer(ioutil.Discard, true)
 	db, _sqlmock, err := sqlmock.New()
 	if err != nil {
@@ -38,55 +38,55 @@ func genStackEl(t *testing.T, mocker func(sqlmock.Sqlmock) sqlmock.Sqlmock) (*st
 		_sqlmock = mocker(_sqlmock)
 	}
 
-	querier, err := NewQuerier(context.Background(), db, savepointer, sql.TxOptions{})
+	_q, err := NewQuerier(context.Background(), db, savepointer, sql.TxOptions{})
 	if err != nil {
 		t.Fatal("Error creating Querier:", err)
 	}
-	el, ok := querier.(*stackEl)
+	q, ok := _q.(*querier)
 	if !ok {
-		t.Fatal("Default querier is not a *stackEl")
+		t.Fatal("Default Querier is not a *querier")
 	}
-	return el, _sqlmock
+	return q, _sqlmock
 }
 
-func TestStackElExec(t *testing.T) {
+func TestQuerierExec(t *testing.T) {
 	ctx := context.Background()
-	var nilStackEl *stackEl
+	var nilQuerier *querier
 
-	stackElNilDb, nilDbSqlmock := genStackEl(t, nil)
-	stackElNilDb.db = nil
+	querierNilDb, nilDbSqlmock := genQuerier(t, nil)
+	querierNilDb.db = nil
 
-	stackElNilTx, nilTxSqlmock := genStackEl(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+	querierNilTx, nilTxSqlmock := genQuerier(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 		m.ExpectExec("").WillReturnResult(sqlmock.NewResult(0, 0))
 		return m
 	})
 
-	stackElWithTx, withTxSqlmock := genStackEl(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+	querierWithTx, withTxSqlmock := genQuerier(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 		m.ExpectBegin()
 		m.ExpectExec("").WillReturnResult(sqlmock.NewResult(0, 0))
 		return m
 	})
-	tx, err := stackElWithTx.db.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := querierWithTx.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		t.Fatal("Could not start transaction:", err)
 	}
-	stackElWithTx.tx = tx
+	querierWithTx.tx = tx
 
 	testCases := []struct {
 		name        string
-		el          *stackEl
+		q           *querier
 		expectedErr error
 		_sqlmock    sqlmock.Sqlmock
 	}{
-		{name: "nil stackEl", el: nilStackEl, expectedErr: ErrNilQuerier},
-		{name: "nil db", el: stackElNilDb, expectedErr: ErrInvalidQuerier, _sqlmock: nilDbSqlmock},
-		{name: "nil tx", el: stackElNilTx, expectedErr: nil, _sqlmock: nilTxSqlmock},
-		{name: "with tx", el: stackElWithTx, expectedErr: nil, _sqlmock: withTxSqlmock},
+		{name: "nil querier", q: nilQuerier, expectedErr: ErrNilQuerier},
+		{name: "nil db", q: querierNilDb, expectedErr: ErrInvalidQuerier, _sqlmock: nilDbSqlmock},
+		{name: "nil tx", q: querierNilTx, expectedErr: nil, _sqlmock: nilTxSqlmock},
+		{name: "with tx", q: querierWithTx, expectedErr: nil, _sqlmock: withTxSqlmock},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := tc.el.Exec(""); err != tc.expectedErr {
+			if _, err := tc.q.Exec(""); err != tc.expectedErr {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}
 
@@ -99,44 +99,44 @@ func TestStackElExec(t *testing.T) {
 	}
 }
 
-func TestStackElQuery(t *testing.T) {
+func TestQuerierQuery(t *testing.T) {
 	ctx := context.Background()
-	var nilStackEl *stackEl
+	var nilQuerier *querier
 
-	stackElNilDb, nilDbSqlmock := genStackEl(t, nil)
-	stackElNilDb.db = nil
+	querierNilDb, nilDbSqlmock := genQuerier(t, nil)
+	querierNilDb.db = nil
 
-	stackElNilTx, nilTxSqlmock := genStackEl(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+	querierNilTx, nilTxSqlmock := genQuerier(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 		m.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{""}).AddRow(1))
 		return m
 	})
 
-	stackElWithTx, withTxSqlmock := genStackEl(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+	querierWithTx, withTxSqlmock := genQuerier(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 		m.ExpectBegin()
 		m.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{""}).AddRow(1))
 		return m
 	})
-	tx, err := stackElWithTx.db.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := querierWithTx.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		t.Fatal("Could not start transaction:", err)
 	}
-	stackElWithTx.tx = tx
+	querierWithTx.tx = tx
 
 	testCases := []struct {
 		name        string
-		el          *stackEl
+		q           *querier
 		expectedErr error
 		_sqlmock    sqlmock.Sqlmock
 	}{
-		{name: "nil stackEl", el: nilStackEl, expectedErr: ErrNilQuerier},
-		{name: "nil db", el: stackElNilDb, expectedErr: ErrInvalidQuerier, _sqlmock: nilDbSqlmock},
-		{name: "nil tx", el: stackElNilTx, expectedErr: nil, _sqlmock: nilTxSqlmock},
-		{name: "with tx", el: stackElWithTx, expectedErr: nil, _sqlmock: withTxSqlmock},
+		{name: "nil querier", q: nilQuerier, expectedErr: ErrNilQuerier},
+		{name: "nil db", q: querierNilDb, expectedErr: ErrInvalidQuerier, _sqlmock: nilDbSqlmock},
+		{name: "nil tx", q: querierNilTx, expectedErr: nil, _sqlmock: nilTxSqlmock},
+		{name: "with tx", q: querierWithTx, expectedErr: nil, _sqlmock: withTxSqlmock},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := tc.el.Query(""); err != tc.expectedErr {
+			if _, err := tc.q.Query(""); err != tc.expectedErr {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}
 
@@ -149,44 +149,44 @@ func TestStackElQuery(t *testing.T) {
 	}
 }
 
-func TestStackElQueryRow(t *testing.T) {
+func TestQuerierQueryRow(t *testing.T) {
 	ctx := context.Background()
-	var nilStackEl *stackEl
+	var nilQuerier *querier
 
-	stackElNilDb, nilDbSqlmock := genStackEl(t, nil)
-	stackElNilDb.db = nil
+	querierNilDb, nilDbSqlmock := genQuerier(t, nil)
+	querierNilDb.db = nil
 
-	stackElNilTx, nilTxSqlmock := genStackEl(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+	querierNilTx, nilTxSqlmock := genQuerier(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 		m.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{""}).AddRow(1))
 		return m
 	})
 
-	stackElWithTx, withTxSqlmock := genStackEl(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+	querierWithTx, withTxSqlmock := genQuerier(t, func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
 		m.ExpectBegin()
 		m.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{""}).AddRow(1))
 		return m
 	})
-	tx, err := stackElWithTx.db.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := querierWithTx.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		t.Fatal("Could not start transaction:", err)
 	}
-	stackElWithTx.tx = tx
+	querierWithTx.tx = tx
 
 	testCases := []struct {
 		name         string
-		el           *stackEl
+		q            *querier
 		expectNilRow bool
 		_sqlmock     sqlmock.Sqlmock
 	}{
-		{name: "nil stackEl", el: nilStackEl, expectNilRow: true},
-		{name: "nil db", el: stackElNilDb, expectNilRow: true, _sqlmock: nilDbSqlmock},
-		{name: "nil tx", el: stackElNilTx, expectNilRow: false, _sqlmock: nilTxSqlmock},
-		{name: "with tx", el: stackElWithTx, expectNilRow: false, _sqlmock: withTxSqlmock},
+		{name: "nil querier", q: nilQuerier, expectNilRow: true},
+		{name: "nil db", q: querierNilDb, expectNilRow: true, _sqlmock: nilDbSqlmock},
+		{name: "nil tx", q: querierNilTx, expectNilRow: false, _sqlmock: nilTxSqlmock},
+		{name: "with tx", q: querierWithTx, expectNilRow: false, _sqlmock: withTxSqlmock},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if row := tc.el.QueryRow(""); row != nil && tc.expectNilRow {
+			if row := tc.q.QueryRow(""); row != nil && tc.expectNilRow {
 				t.Errorf("Expected a nil row but got: %+v", row)
 			} else if row == nil && !tc.expectNilRow {
 				t.Error("Got an unxpected nil row")
@@ -201,35 +201,35 @@ func TestStackElQueryRow(t *testing.T) {
 	}
 }
 
-func TestStackElAtomicErrs(t *testing.T) {
+func TestQuerierAtomicErrs(t *testing.T) {
 	cb := func(context.Context, Querier) error {
 		return nil
 	}
 
-	var nilStackEl *stackEl
+	var nilQuerier *querier
 	savepointer := mock.NewSavepointer(ioutil.Discard, true)
 	db := sql.DB{}
 
 	testCases := []struct {
 		name        string
-		el          *stackEl
+		q           *querier
 		f           func(context.Context, Querier) error
 		expectedErr *Error
 	}{
-		{name: "nil stackEl", el: nilStackEl, f: cb, expectedErr: newError(nil, ErrNilQuerier)},
-		{name: "nil db", el: &stackEl{db: nil, txCreator: DefaultTxCreator, savepointer: savepointer}, f: cb,
+		{name: "nil querier", q: nilQuerier, f: cb, expectedErr: newError(nil, ErrNilQuerier)},
+		{name: "nil db", q: &querier{db: nil, txCreator: DefaultTxCreator, savepointer: savepointer}, f: cb,
 			expectedErr: newError(nil, ErrInvalidQuerier)},
-		{name: "nil txCreator", el: &stackEl{db: &db, txCreator: nil, savepointer: nil}, f: cb,
+		{name: "nil txCreator", q: &querier{db: &db, txCreator: nil, savepointer: nil}, f: cb,
 			expectedErr: newError(nil, ErrInvalidQuerier)},
-		{name: "nil savepointer", el: &stackEl{db: &db, txCreator: DefaultTxCreator, savepointer: nil}, f: cb,
+		{name: "nil savepointer", q: &querier{db: &db, txCreator: DefaultTxCreator, savepointer: nil}, f: cb,
 			expectedErr: newError(nil, ErrInvalidQuerier)},
-		{name: "nil callback", el: &stackEl{db: &db, txCreator: DefaultTxCreator, savepointer: savepointer}, f: nil,
+		{name: "nil callback", q: &querier{db: &db, txCreator: DefaultTxCreator, savepointer: savepointer}, f: nil,
 			expectedErr: nil},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.el.Atomic(tc.f); !errsEq(err, tc.expectedErr) {
+			if err := tc.q.Atomic(tc.f); !errsEq(err, tc.expectedErr) {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}
 		})

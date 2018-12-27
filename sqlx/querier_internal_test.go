@@ -35,11 +35,11 @@ func genWrappedQuerier(t *testing.T, mocker func(sqlmock.Sqlmock) sqlmock.Sqlmoc
 		_sqlmock = mocker(_sqlmock)
 	}
 
-	querier, err := NewQuerier(context.Background(), sqlx.NewDb(db, ""), savepointer, sql.TxOptions{})
+	q, err := NewQuerier(context.Background(), sqlx.NewDb(db, ""), savepointer, sql.TxOptions{})
 	if err != nil {
 		t.Fatal("Error creating Querier:", err)
 	}
-	wq, ok := querier.(*wrappedQuerier)
+	wq, ok := q.(*wrappedQuerier)
 	if !ok {
 		t.Fatal("Default querier is not a *wrappedQuerier")
 	}

@@ -52,7 +52,7 @@ type Querier interface {
 	Atomic(f func(context.Context, Querier) error) *Error
 }
 
-type stackEl struct {
+type querier struct {
 	ctx           context.Context
 	db            *sql.DB
 	txCreator     TxCreator
@@ -62,87 +62,87 @@ type stackEl struct {
 	savepointName string
 }
 
-func (el *stackEl) Exec(query string, args ...interface{}) (sql.Result, error) {
-	return el.ExecContext(context.Background(), query, args...)
+func (q *querier) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return q.ExecContext(context.Background(), query, args...)
 }
 
-func (el *stackEl) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	if el == nil {
+func (q *querier) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	if q == nil {
 		return nil, ErrNilQuerier
 	}
-	if el.db == nil {
+	if q.db == nil {
 		return nil, ErrInvalidQuerier
 	}
-	if el.tx == nil {
-		return el.db.ExecContext(ctx, query, args...)
+	if q.tx == nil {
+		return q.db.ExecContext(ctx, query, args...)
 	}
-	return el.tx.ExecContext(ctx, query, args...)
+	return q.tx.ExecContext(ctx, query, args...)
 }
 
-func (el *stackEl) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	return el.QueryContext(context.Background(), query, args...)
+func (q *querier) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return q.QueryContext(context.Background(), query, args...)
 }
 
-func (el *stackEl) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	if el == nil {
+func (q *querier) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	if q == nil {
 		return nil, ErrNilQuerier
 	}
-	if el.db == nil {
+	if q.db == nil {
 		return nil, ErrInvalidQuerier
 	}
-	if el.tx == nil {
-		return el.db.QueryContext(ctx, query, args...)
+	if q.tx == nil {
+		return q.db.QueryContext(ctx, query, args...)
 	}
-	return el.tx.QueryContext(ctx, query, args...)
+	return q.tx.QueryContext(ctx, query, args...)
 }
-func (el *stackEl) QueryRow(query string, args ...interface{}) *sql.Row {
-	return el.QueryRowContext(context.Background(), query, args...)
+func (q *querier) QueryRow(query string, args ...interface{}) *sql.Row {
+	return q.QueryRowContext(context.Background(), query, args...)
 }
 
-func (el *stackEl) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	if el == nil {
+func (q *querier) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	if q == nil {
 		return nil
 	}
-	if el.db == nil {
+	if q.db == nil {
 		return nil
 	}
-	if el.tx == nil {
-		return el.db.QueryRowContext(ctx, query, args...)
+	if q.tx == nil {
+		return q.db.QueryRowContext(ctx, query, args...)
 	}
-	return el.tx.QueryRowContext(ctx, query, args...)
+	return q.tx.QueryRowContext(ctx, query, args...)
 }
 
 // using named returns so the deferred function call can modify the returned error
-func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
-	// el should never be modified, instead a nextEl should be created and used
+func (q *querier) Atomic(f func(context.Context, Querier) error) (err *Error) {
+	// q should never be modified, instead a nextQ should be created and used
 
-	if el == nil {
+	if q == nil {
 		return newError(nil, ErrNilQuerier)
 	}
-	if el.db == nil {
+	if q.db == nil {
 		return newError(nil, ErrInvalidQuerier)
 	}
-	if el.txCreator == nil {
+	if q.txCreator == nil {
 		return newError(nil, ErrInvalidQuerier)
 	}
-	if el.savepointer == nil {
+	if q.savepointer == nil {
 		return newError(nil, ErrInvalidQuerier)
 	}
 	if f == nil {
 		return nil
 	}
 
-	nextEl := *el
-	if nextEl.tx == nil {
-		tx, txErr := nextEl.txCreator(nextEl.ctx, nextEl.db, nextEl.txOpts)
+	nextQ := *q
+	if nextQ.tx == nil {
+		tx, txErr := nextQ.txCreator(nextQ.ctx, nextQ.db, nextQ.txOpts)
 		if txErr != nil {
 			return newError(nil, txErr)
 		}
-		nextEl.tx = tx
+		nextQ.tx = tx
 	} else {
-		nextEl.savepointName = savepointers.GenSavepointName()
-		if _, execErr := nextEl.tx.ExecContext(nextEl.ctx,
-			nextEl.savepointer.Create(nextEl.savepointName)); execErr != nil {
+		nextQ.savepointName = savepointers.GenSavepointName()
+		if _, execErr := nextQ.tx.ExecContext(nextQ.ctx,
+			nextQ.savepointer.Create(nextQ.savepointName)); execErr != nil {
 			return newError(nil, execErr)
 		}
 	}
@@ -160,35 +160,35 @@ func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
 				}()
 			}
 
-			if nextEl.usingSavepoint() {
+			if nextQ.usingSavepoint() {
 				// Rollback savepoint on error
-				if _, execErr := nextEl.tx.ExecContext(nextEl.ctx,
-					nextEl.savepointer.Rollback(nextEl.savepointName)); execErr != nil {
+				if _, execErr := nextQ.tx.ExecContext(nextQ.ctx,
+					nextQ.savepointer.Rollback(nextQ.savepointName)); execErr != nil {
 					err.Atomic = execErr
 					return
 				}
 			} else {
 				// Rollback transaction on error
-				if rbErr := nextEl.tx.Rollback(); rbErr != nil {
+				if rbErr := nextQ.tx.Rollback(); rbErr != nil {
 					err.Atomic = rbErr
 					return
 				}
 			}
 		} else {
-			if nextEl.usingSavepoint() {
+			if nextQ.usingSavepoint() {
 				// Release savepoint on success
-				releaseStmt := nextEl.savepointer.Release(nextEl.savepointName)
+				releaseStmt := nextQ.savepointer.Release(nextQ.savepointName)
 				if releaseStmt == "" {
 					// Some SQL RDBMSs don't support releasing savepoints
 					return
 				}
-				if _, execErr := nextEl.tx.ExecContext(nextEl.ctx, releaseStmt); execErr != nil {
+				if _, execErr := nextQ.tx.ExecContext(nextQ.ctx, releaseStmt); execErr != nil {
 					err = newError(nil, execErr)
 					return
 				}
 			} else {
 				// Commit transaction on success
-				if commitErr := nextEl.tx.Commit(); commitErr != nil {
+				if commitErr := nextQ.tx.Commit(); commitErr != nil {
 					err = newError(nil, commitErr)
 					return
 				}
@@ -196,7 +196,7 @@ func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
 		}
 	}()
 
-	cbErr := f(nextEl.ctx, &nextEl)
+	cbErr := f(nextQ.ctx, &nextQ)
 	if cbErr != nil {
 		err = newError(cbErr, nil)
 	}
@@ -204,8 +204,8 @@ func (el *stackEl) Atomic(f func(context.Context, Querier) error) (err *Error) {
 	return // nolint:nakedret
 }
 
-// usingSavepoint determines whether or not the stack element is using a savepoint or transaction
-func (el *stackEl) usingSavepoint() bool { return el.savepointName != "" }
+// usingSavepoint determines whether or not the querier is using a savepoint or transaction
+func (q *querier) usingSavepoint() bool { return q.savepointName != "" }
 
 // TxCreator is used to create transactions for a Querier
 type TxCreator func(context.Context, *sql.DB, sql.TxOptions) (*sql.Tx, error)
@@ -236,6 +236,6 @@ func NewQuerierWithTxCreator(ctx context.Context, db *sql.DB, savepointer savepo
 	if txCreator == nil {
 		txCreator = DefaultTxCreator
 	}
-	return &stackEl{ctx: ctx, db: db, txCreator: txCreator, txOpts: txOpts, tx: nil, savepointer: savepointer,
+	return &querier{ctx: ctx, db: db, txCreator: txCreator, txOpts: txOpts, tx: nil, savepointer: savepointer,
 		savepointName: ""}, nil
 }

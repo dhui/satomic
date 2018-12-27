@@ -51,7 +51,7 @@ func Example() {
 	// For actual code, use a real Savepointer instead of a mocked one
 	q, err := satomic.NewQuerier(ctx, sqlx.NewDb(db, ""), mock.NewSavepointer(os.Stdout, true), sql.TxOptions{})
 	if err != nil {
-		fmt.Println("Error creating querier:", err)
+		fmt.Println("Error creating Querier:", err)
 		return
 	}
 	if err := q.Atomicx(func(ctx context.Context, q satomic.Querier) error {
