@@ -30,12 +30,12 @@ func TestSavepointerSQLite(t *testing.T) {
 		t.Fatal("Error creating savepoint:", err)
 	}
 	if _, err := tx.Exec(savepointer.Rollback(savepointName1)); err != nil {
-		t.Fatal("Error creating savepoint:", err)
+		t.Fatal("Error rolling back savepoint:", err)
 	}
 	if _, err := tx.Exec(savepointer.Create(savepointName2)); err != nil {
 		t.Fatal("Error creating savepoint:", err)
 	}
 	if _, err := tx.Exec(savepointer.Release(savepointName2)); err != nil {
-		t.Fatal("Error creating savepoint:", err)
+		t.Fatal("Error releasing savepoint:", err)
 	}
 }
