@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
+	"time"
 )
 
 import (
@@ -18,6 +19,7 @@ import (
 const (
 	password = "insecurepassword"
 	db       = "public"
+	timeout  = 3 * time.Minute
 )
 
 var env = map[string]string{
@@ -50,7 +52,7 @@ func TestSavepointerMySQL(t *testing.T) {
 		v := v
 		t.Run(v, func(t *testing.T) {
 			t.Parallel()
-			dktest.Run(t, v, dktest.Options{Env: env, PortRequired: true, ReadyFunc: readyFunc},
+			dktest.Run(t, v, dktest.Options{Env: env, PortRequired: true, ReadyFunc: readyFunc, Timeout: timeout},
 				func(t *testing.T, c dktest.ContainerInfo) {
 					connStr := fmt.Sprintf("root:%s@tcp(%s:%s)/%s", password, c.IP, c.Port, db)
 					db, err := sql.Open("mysql", connStr)

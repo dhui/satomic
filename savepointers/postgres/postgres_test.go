@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
+	"time"
 )
 
 import (
@@ -13,6 +14,10 @@ import (
 
 import (
 	"github.com/dhui/satomic/savepointers/postgres"
+)
+
+const (
+	timeout = 3 * time.Minute
 )
 
 func readyFunc(c dktest.ContainerInfo) bool {
@@ -41,7 +46,7 @@ func TestSavepointerPostgres(t *testing.T) {
 		v := v
 		t.Run(v, func(t *testing.T) {
 			t.Parallel()
-			dktest.Run(t, v, dktest.Options{PortRequired: true, ReadyFunc: readyFunc},
+			dktest.Run(t, v, dktest.Options{PortRequired: true, ReadyFunc: readyFunc, Timeout: timeout},
 				func(t *testing.T, c dktest.ContainerInfo) {
 					connStr := fmt.Sprintf("host=%s port=%s user=postgres dbname=postgres sslmode=disable",
 						c.IP, c.Port)
