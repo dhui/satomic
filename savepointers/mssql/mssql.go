@@ -16,16 +16,18 @@ type Savepointer struct{}
 
 // Create creates a new savepoint with the given name
 //
+// Note: names have a max length of 32 characters
+//
 // https://docs.microsoft.com/en-us/sql/t-sql/language-elements/save-transaction-transact-sql
 func (sp Savepointer) Create(name string) string {
-	return "SAVE " + Quote(name) + ";"
+	return "SAVE TRANSACTION " + Quote(name) + ";"
 }
 
 // Rollback rollsback the named savepoint
 //
 // https://docs.microsoft.com/en-us/sql/t-sql/language-elements/rollback-work-transact-sql
 func (sp Savepointer) Rollback(name string) string {
-	return "ROLLBACK " + Quote(name) + ";"
+	return "ROLLBACK TRANSACTION " + Quote(name) + ";"
 }
 
 // Release releases the named savepoint. Releasing a savepoint is not implemented in MS SQL
