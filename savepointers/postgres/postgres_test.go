@@ -14,20 +14,23 @@ import (
 
 import (
 	"github.com/dhui/satomic/savepointers/postgres"
+	"github.com/dhui/satomic/savepointers/savepointertest"
 )
 
 const (
 	timeout = 3 * time.Minute
 )
 
-func readyFunc(c dktest.ContainerInfo) bool {
+var postgresDBGetter savepointertest.DBGetter = func(c dktest.ContainerInfo) (*sql.DB, error) {
 	connStr := fmt.Sprintf("host=%s port=%s user=postgres dbname=postgres sslmode=disable", c.IP, c.Port)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return false
+		return nil, err
 	}
-	defer db.Close() // nolint:errcheck
-	return db.Ping() == nil
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func TestSavepointerPostgres(t *testing.T) {
@@ -42,43 +45,6 @@ func TestSavepointerPostgres(t *testing.T) {
 		"postgres:9.4-alpine",
 	}
 
-	for _, v := range versions {
-		v := v
-		t.Run(v, func(t *testing.T) {
-			t.Parallel()
-			dktest.Run(t, v, dktest.Options{PortRequired: true, ReadyFunc: readyFunc, Timeout: timeout},
-				func(t *testing.T, c dktest.ContainerInfo) {
-					connStr := fmt.Sprintf("host=%s port=%s user=postgres dbname=postgres sslmode=disable",
-						c.IP, c.Port)
-					db, err := sql.Open("postgres", connStr)
-					if err != nil {
-						t.Fatal(err)
-					}
-					defer db.Close() // nolint:errcheck
-					if err := db.Ping(); err != nil {
-						t.Fatal(err)
-					}
-					tx, err := db.Begin()
-					if err != nil {
-						t.Fatal("Error starting transaction:", err)
-					}
-
-					savepointer := postgres.Savepointer{}
-					savepointName1 := `needs to be quoted1 +/'"]` + "`"
-					savepointName2 := `needs to be quoted2 +/'"]` + "`"
-					if _, err := tx.Exec(savepointer.Create(savepointName1)); err != nil {
-						t.Fatal("Error creating savepoint:", err)
-					}
-					if _, err := tx.Exec(savepointer.Rollback(savepointName1)); err != nil {
-						t.Fatal("Error rolling back savepoint:", err)
-					}
-					if _, err := tx.Exec(savepointer.Create(savepointName2)); err != nil {
-						t.Fatal("Error creating savepoint:", err)
-					}
-					if _, err := tx.Exec(savepointer.Release(savepointName2)); err != nil {
-						t.Fatal("Error releasing savepoint:", err)
-					}
-				})
-		})
-	}
+	savepointertest.TestSavepointerWithDocker(t, postgres.Savepointer{}, versions, dktest.Options{
+		PortRequired: true, ReadyFunc: postgresDBGetter.ReadyFunc(), Timeout: timeout}, postgresDBGetter)
 }

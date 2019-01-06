@@ -14,6 +14,7 @@ import (
 
 import (
 	"github.com/dhui/satomic/savepointers/mssql"
+	"github.com/dhui/satomic/savepointers/savepointertest"
 )
 
 const (
@@ -28,14 +29,16 @@ var env = map[string]string{
 	"SA_PASSWORD": password,
 }
 
-func readyFunc(c dktest.ContainerInfo) bool {
+var msSQLDBGetter savepointertest.DBGetter = func(c dktest.ContainerInfo) (*sql.DB, error) {
 	connStr := fmt.Sprintf("sqlserver://sa:%s@%s:%s", password, c.IP, c.Port)
 	db, err := sql.Open("sqlserver", connStr)
 	if err != nil {
-		return false
+		return nil, err
 	}
-	defer db.Close() // nolint:errcheck
-	return db.Ping() == nil
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func TestSavepointerMSSQL(t *testing.T) {
@@ -46,42 +49,6 @@ func TestSavepointerMSSQL(t *testing.T) {
 		"microsoft/mssql-server-linux",
 	}
 
-	for _, v := range versions {
-		v := v
-		t.Run(v, func(t *testing.T) {
-			t.Parallel()
-			dktest.Run(t, v, dktest.Options{Env: env, PortRequired: true, ReadyFunc: readyFunc, Timeout: timeout},
-				func(t *testing.T, c dktest.ContainerInfo) {
-					connStr := fmt.Sprintf("sqlserver://sa:%s@%s:%s", password, c.IP, c.Port)
-					db, err := sql.Open("sqlserver", connStr)
-					if err != nil {
-						t.Fatal(err)
-					}
-					defer db.Close() // nolint:errcheck
-					if err := db.Ping(); err != nil {
-						t.Fatal(err)
-					}
-					tx, err := db.Begin()
-					if err != nil {
-						t.Fatal("Error starting transaction:", err)
-					}
-
-					savepointer := mssql.Savepointer{}
-					savepointName1 := `needs to be quoted1 +/'"]` + "`"
-					savepointName2 := `needs to be quoted2 +/'"]` + "`"
-					if _, err := tx.Exec(savepointer.Create(savepointName1)); err != nil {
-						t.Fatal("Error creating savepoint:", err)
-					}
-					if _, err := tx.Exec(savepointer.Rollback(savepointName1)); err != nil {
-						t.Fatal("Error rolling back savepoint:", err)
-					}
-					if _, err := tx.Exec(savepointer.Create(savepointName2)); err != nil {
-						t.Fatal("Error creating savepoint:", err)
-					}
-					if _, err := tx.Exec(savepointer.Release(savepointName2)); err != nil {
-						t.Fatal("Error releasing savepoint:", err)
-					}
-				})
-		})
-	}
+	savepointertest.TestSavepointerWithDocker(t, mssql.Savepointer{}, versions, dktest.Options{Env: env,
+		PortRequired: true, ReadyFunc: msSQLDBGetter.ReadyFunc(), Timeout: timeout}, msSQLDBGetter)
 }
