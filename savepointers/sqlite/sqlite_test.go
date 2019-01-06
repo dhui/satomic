@@ -19,7 +19,7 @@ func TestSavepointerSQLite(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error opening SQLite db:", err)
 	}
-	defer db.Close()
+	defer db.Close() // nolint:errcheck
 
 	savepointertest.TestSavepointer(t, sqlite.Savepointer{}, db)
 }
