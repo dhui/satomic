@@ -54,6 +54,8 @@ func main() {
 
 A more complete example can be found in the [GoDoc](https://godoc.org/github.com/dhui/satomic)
 
+For usage with [sqlx](https://github.com/jmoiron/sqlx), use [github.com/dhui/satomic/sqlx](https://godoc.org/github.com/dhui/satomic/sqlx)
+
 ## What's with the name?
 Go **S**QL **atomic** => satomic
 
