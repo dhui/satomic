@@ -4,6 +4,15 @@
 
 satomic is a Golang package that makes managing nested SQL transactions/savepoints easier
 
+## Overview
+
+Create a `Querier` and use the `Atomic()` method. Any SQL statements inside the `Atomic()` method's callback function will be appropriately wrapped in a transaction or savepoint. Transaction and savepoint management will be handled for you automatically. Any error returned by the callback function (or unrecovered panic) will rollback the savepoint or transaction accordingly. A new `Querier` instance is also provided to the `Atomic()` method's callback function to allow nesting savepoints.
+
+## Status
+
+satomic is **not stable yet**, so the **interfaces may change in a non-backwards compatible manner**.
+satomic follows [Semantic Versioning 2.0.0](https://semver.org/). While the major version number is `0`, all backwards compatible changes will be denoted by a minor version number bump. All other changes will increase the patch version number.
+
 ## Example usage
 
 ```golang
@@ -57,6 +66,7 @@ A more complete example can be found in the [GoDoc](https://godoc.org/github.com
 For usage with [sqlx](https://github.com/jmoiron/sqlx), use [github.com/dhui/satomic/sqlx](https://godoc.org/github.com/dhui/satomic/sqlx)
 
 ## What's with the name?
+
 Go **S**QL **atomic** => satomic
 
 ---
