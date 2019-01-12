@@ -1,6 +1,7 @@
 package mysql_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -28,13 +29,17 @@ var env = map[string]string{
 	"MYSQL_DATABASE":      db,
 }
 
-var mySQLDBGetter savepointertest.DBGetter = func(c dktest.ContainerInfo) (*sql.DB, error) {
-	connStr := fmt.Sprintf("root:%s@tcp(%s:%s)/%s", password, c.IP, c.Port, db)
+var mySQLDBGetter savepointertest.DBGetter = func(ctx context.Context, c dktest.ContainerInfo) (*sql.DB, error) {
+	ip, port, err := c.FirstPort()
+	if err != nil {
+		return nil, err
+	}
+	connStr := fmt.Sprintf("root:%s@tcp(%s:%s)/%s", password, ip, port, db)
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
 		return nil, err
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		return nil, err
 	}
 	return db, nil

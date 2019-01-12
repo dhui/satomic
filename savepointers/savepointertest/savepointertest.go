@@ -1,6 +1,7 @@
 package savepointertest
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -17,12 +18,12 @@ import (
 // DBGetter is a function that gets a ready-to-use SQL DB using the given ContainerInfo.
 // e.g. Ping() should be called by the DBGetter before returning the *sql.DB.
 // The caller is responsible for closing the DB.
-type DBGetter func(dktest.ContainerInfo) (*sql.DB, error)
+type DBGetter func(context.Context, dktest.ContainerInfo) (*sql.DB, error)
 
 // ReadyFunc converts the DBGetter to dktest compatible ReadyFunc
-func (g DBGetter) ReadyFunc() func(dktest.ContainerInfo) bool {
-	return func(c dktest.ContainerInfo) bool {
-		db, err := g(c)
+func (g DBGetter) ReadyFunc() func(context.Context, dktest.ContainerInfo) bool {
+	return func(ctx context.Context, c dktest.ContainerInfo) bool {
+		db, err := g(ctx, c)
 		if err != nil {
 			return false
 		}
@@ -59,13 +60,14 @@ func TestSavepointer(t *testing.T, savepointer savepointers.Savepointer, db *sql
 // TestSavepointerWithDocker tests the given Savepointer using the given Docker images and options
 func TestSavepointerWithDocker(t *testing.T, savepointer savepointers.Savepointer, imageNames []string,
 	opts dktest.Options, dbGetter DBGetter) {
+	ctx := context.Background()
 	for _, imageName := range imageNames {
 		imageName := imageName
 		t.Run(fmt.Sprintf("test_savepointer_%T_%s", savepointer, imageName), func(t *testing.T) {
 			t.Parallel()
 			dktest.Run(t, imageName, opts,
 				func(t *testing.T, c dktest.ContainerInfo) {
-					db, err := dbGetter(c)
+					db, err := dbGetter(ctx, c)
 					if err != nil {
 						t.Fatal(err)
 					}

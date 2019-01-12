@@ -1,6 +1,7 @@
 package mssql_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -29,13 +30,17 @@ var env = map[string]string{
 	"SA_PASSWORD": password,
 }
 
-var msSQLDBGetter savepointertest.DBGetter = func(c dktest.ContainerInfo) (*sql.DB, error) {
-	connStr := fmt.Sprintf("sqlserver://sa:%s@%s:%s", password, c.IP, c.Port)
+var msSQLDBGetter savepointertest.DBGetter = func(ctx context.Context, c dktest.ContainerInfo) (*sql.DB, error) {
+	ip, port, err := c.FirstPort()
+	if err != nil {
+		return nil, err
+	}
+	connStr := fmt.Sprintf("sqlserver://sa:%s@%s:%s", password, ip, port)
 	db, err := sql.Open("sqlserver", connStr)
 	if err != nil {
 		return nil, err
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		return nil, err
 	}
 	return db, nil

@@ -1,6 +1,7 @@
 package postgres_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -21,13 +22,17 @@ const (
 	timeout = 3 * time.Minute
 )
 
-var postgresDBGetter savepointertest.DBGetter = func(c dktest.ContainerInfo) (*sql.DB, error) {
-	connStr := fmt.Sprintf("host=%s port=%s user=postgres dbname=postgres sslmode=disable", c.IP, c.Port)
+var postgresDBGetter savepointertest.DBGetter = func(ctx context.Context, c dktest.ContainerInfo) (*sql.DB, error) {
+	ip, port, err := c.FirstPort()
+	if err != nil {
+		return nil, err
+	}
+	connStr := fmt.Sprintf("host=%s port=%s user=postgres dbname=postgres sslmode=disable", ip, port)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		return nil, err
 	}
 	return db, nil
