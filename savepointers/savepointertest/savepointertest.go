@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
+	"time"
 )
 
 import (
@@ -14,6 +15,10 @@ import (
 import (
 	"github.com/dhui/satomic/savepointers"
 )
+
+func init() {
+	dktest.DefaultPullTimeout = 2 * time.Minute
+}
 
 // DBGetter is a function that gets a ready-to-use SQL DB using the given ContainerInfo.
 // e.g. Ping() should be called by the DBGetter before returning the *sql.DB.
