@@ -30,7 +30,7 @@ var env = map[string]string{
 }
 
 var mySQLDBGetter savepointertest.DBGetter = func(ctx context.Context, c dktest.ContainerInfo) (*sql.DB, error) {
-	ip, port, err := c.FirstPort()
+	ip, port, err := c.Port(3306)
 	if err != nil {
 		return nil, err
 	}
