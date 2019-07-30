@@ -24,7 +24,7 @@ var (
 )
 
 // QuerierBase provides an interface containing database/sql methods shared between
-// sql.DB, sql.Tx, and sql.Conn
+// sql.DB and sql.Tx
 type QuerierBase interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
@@ -33,7 +33,6 @@ type QuerierBase interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 	// TODO:
-	// Should support for sql.Conn be dropped?
 	// Should support for Prepare(), PrepareContext(), Stmt(), and StmtContext() be added?
 }
 

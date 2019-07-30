@@ -323,3 +323,12 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 		})
 	}
 }
+
+func TestQuerierBaseImplementers(t *testing.T) {
+	f := func(qb satomic.QuerierBase) {}
+
+	// Test that sql.DB implements the satomic.QuerierBase interface
+	f(&sql.DB{})
+	// Test that sql.Tx implements the satomic.QuerierBase interface
+	f(&sql.Tx{})
+}

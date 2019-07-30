@@ -64,3 +64,12 @@ func TestNewQuerier(t *testing.T) {
 		})
 	}
 }
+
+func TestQuerierBaseImplementers(t *testing.T) {
+	f := func(qb asqlx.QuerierBase) {}
+
+	// Test that sqlx.DB implements the satomic.QuerierBase interface
+	f(&sqlx.DB{})
+	// Test that sqlx.Tx implements the satomic.QuerierBase interface
+	f(&sqlx.Tx{})
+}
