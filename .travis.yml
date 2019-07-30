@@ -12,6 +12,7 @@ matrix:
   include:
   # Supported versions of Go: https://golang.org/dl/
   - go: "1.11.x"
+  - go: "1.12.x"
   - go: master
 
 cache:
