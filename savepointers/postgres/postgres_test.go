@@ -44,7 +44,7 @@ func TestSavepointerPostgres(t *testing.T) {
 	// https://www.postgresql.org/support/versioning/
 	versions := []string{
 		"postgres:11-alpine",
-		"postgres:10.6-alpine",
+		"postgres:10-alpine",
 		"postgres:9.6-alpine",
 		"postgres:9.5-alpine",
 		"postgres:9.4-alpine",
