@@ -49,9 +49,8 @@ var msSQLDBGetter savepointertest.DBGetter = func(ctx context.Context, c dktest.
 func TestSavepointerMSSQL(t *testing.T) {
 	t.Parallel()
 
-	// https://www.mysql.com/support/supportedplatforms/database.html
 	versions := []string{
-		"microsoft/mssql-server-linux",
+		"mcr.microsoft.com/mssql/server:2017-latest-ubuntu",
 	}
 
 	savepointertest.TestSavepointerWithDocker(t, mssql.Savepointer{}, versions, dktest.Options{Env: env,
