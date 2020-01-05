@@ -53,7 +53,6 @@ func TestSavepointerMySQL(t *testing.T) {
 		"mysql:8",
 		"mysql:5.7",
 		"mysql:5.6",
-		"mysql:5.5",
 	}
 
 	savepointertest.TestSavepointerWithDocker(t, mysql.Savepointer{}, versions, dktest.Options{Env: env,
