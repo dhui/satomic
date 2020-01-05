@@ -48,7 +48,6 @@ func TestSavepointerPostgres(t *testing.T) {
 		"postgres:10-alpine",
 		"postgres:9.6-alpine",
 		"postgres:9.5-alpine",
-		"postgres:9.4-alpine",
 	}
 
 	savepointertest.TestSavepointerWithDocker(t, postgres.Savepointer{}, versions, dktest.Options{
