@@ -1,4 +1,4 @@
-package sqlx_test
+package satomicx_test
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 )
 
 import (
+	satomic "github.com/dhui/satomic/satomicx"
 	"github.com/dhui/satomic/savepointers/mock"
-	satomic "github.com/dhui/satomic/sqlx"
 )
 
 func Example() {

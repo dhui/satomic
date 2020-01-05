@@ -1,4 +1,4 @@
-package sqlx_test
+package satomicx_test
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 
 import (
 	"github.com/dhui/satomic"
+	"github.com/dhui/satomic/satomicx"
 	"github.com/dhui/satomic/savepointers"
 	"github.com/dhui/satomic/savepointers/mock"
-	asqlx "github.com/dhui/satomic/sqlx"
 )
 
 func TestNewQuerier(t *testing.T) {
@@ -53,7 +53,7 @@ func TestNewQuerier(t *testing.T) {
 			db, _sqlmock := tc.getDb()
 			_sqlmock = tc.mocker(_sqlmock)
 
-			if _, err := asqlx.NewQuerier(ctx, db, tc.savepointer,
+			if _, err := satomicx.NewQuerier(ctx, db, tc.savepointer,
 				sql.TxOptions{}); err != tc.expectedErr {
 				t.Errorf("Didn't get the expected error: %+v != %+v", err, tc.expectedErr)
 			}
@@ -66,7 +66,7 @@ func TestNewQuerier(t *testing.T) {
 }
 
 func TestQuerierBaseImplementers(t *testing.T) {
-	f := func(qb asqlx.QuerierBase) {}
+	f := func(qb satomicx.QuerierBase) {}
 
 	// Test that sqlx.DB implements the satomic.QuerierBase interface
 	f(&sqlx.DB{})
