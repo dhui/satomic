@@ -3,7 +3,7 @@ sudo: false
 
 env:
   global:
-    - GOLANGCI_LINT_VERSION=v1.17.1
+    - GOLANGCI_LINT_VERSION=v1.22.2
     - GO111MODULE=on
 
 matrix:
