@@ -1,7 +1,7 @@
 module github.com/dhui/satomic
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.3.3
+	github.com/DATA-DOG/go-sqlmock v1.4.0
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20191128021309-1d7a30a10f73
 	github.com/dhui/dhrand v0.1.0
