@@ -276,6 +276,12 @@ func TestDefaultQuerierAtomicSingleSavepointReleased(t *testing.T) {
 func TestNewQuerierWithTxCreator(t *testing.T) {
 	noopMocker := func(m sqlmock.Sqlmock) sqlmock.Sqlmock { return m }
 
+	pingErr := errors.New("ping error")
+	pingErrMocker := func(m sqlmock.Sqlmock) sqlmock.Sqlmock {
+		m.ExpectPing().WillReturnError(pingErr)
+		return m
+	}
+
 	getDb := func() (*sql.DB, sqlmock.Sqlmock) {
 		db, _sqlmock, err := sqlmock.New()
 		if err != nil {
@@ -304,6 +310,14 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 			txCreator: satomic.DefaultTxCreator, expectedErr: nil},
 		{name: "success - nil TxCreator", mocker: noopMocker, getDb: getDb,
 			savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: nil, expectedErr: nil},
+		{name: "error", mocker: pingErrMocker, getDb: func() (*sql.DB, sqlmock.Sqlmock) {
+			db, _sqlmock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+			if err != nil {
+				t.Fatal("Error creating sqlmock:", err)
+			}
+			return db, _sqlmock
+		}, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+			txCreator: satomic.DefaultTxCreator, expectedErr: pingErr},
 	}
 
 	ctx := context.Background()
