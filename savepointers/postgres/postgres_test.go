@@ -27,7 +27,7 @@ var postgresDBGetter savepointertest.DBGetter = func(ctx context.Context, c dkte
 	if err != nil {
 		return nil, err
 	}
-	connStr := fmt.Sprintf("host=%s port=%s user=postgres dbname=postgres sslmode=disable", ip, port)
+	connStr := fmt.Sprintf("host=%s port=%s user=postgres password=postgres dbname=postgres sslmode=disable", ip, port)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
@@ -50,6 +50,14 @@ func TestSavepointerPostgres(t *testing.T) {
 		"postgres:9.5-alpine",
 	}
 
-	savepointertest.TestSavepointerWithDocker(t, postgres.Savepointer{}, versions, dktest.Options{
-		PortRequired: true, ReadyFunc: postgresDBGetter.ReadyFunc(), Timeout: timeout}, postgresDBGetter)
+	savepointertest.TestSavepointerWithDocker(t,
+		postgres.Savepointer{},
+		versions,
+		dktest.Options{
+			PortRequired: true,
+			ReadyFunc:    postgresDBGetter.ReadyFunc(),
+			Timeout:      timeout,
+			Env:          map[string]string{"POSTGRES_PASSWORD": "postgres"},
+		},
+		postgresDBGetter)
 }
