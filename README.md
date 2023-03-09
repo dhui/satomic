@@ -1,6 +1,6 @@
 # satomic
 
-[![Build Status](https://img.shields.io/travis/dhui/satomic/master.svg)](https://travis-ci.org/dhui/satomic) [![Code Coverage](https://img.shields.io/codecov/c/github/dhui/satomic.svg)](https://codecov.io/gh/dhui/satomic) [![GoDoc](https://godoc.org/github.com/dhui/satomic?status.svg)](https://godoc.org/github.com/dhui/satomic) [![Go Report Card](https://goreportcard.com/badge/github.com/dhui/satomic)](https://goreportcard.com/report/github.com/dhui/satomic) [![GitHub Release](https://img.shields.io/github/release/dhui/satomic/all.svg)](https://github.com/dhui/satomic/releases) ![Supported Go versions](https://img.shields.io/badge/Go-1.12%2C%201.13-lightgrey.svg)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/actions/workflow/status/dhui/satomic/go.yml?branch=master) [![Code Coverage](https://img.shields.io/codecov/c/github/dhui/satomic.svg)](https://codecov.io/gh/dhui/satomic) [![GoDoc](https://godoc.org/github.com/dhui/satomic?status.svg)](https://godoc.org/github.com/dhui/satomic) [![Go Report Card](https://goreportcard.com/badge/github.com/dhui/satomic)](https://goreportcard.com/report/github.com/dhui/satomic) [![GitHub Release](https://img.shields.io/github/release/dhui/satomic/all.svg)](https://github.com/dhui/satomic/releases) ![Supported Go versions](https://img.shields.io/badge/Go-1.19%2C%201.20-lightgrey.svg)
 
 satomic is a Golang package that makes managing nested SQL transactions/savepoints easier
 
