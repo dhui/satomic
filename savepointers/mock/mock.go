@@ -1,3 +1,4 @@
+// Package mock provides a mock Savepointer implementation
 package mock
 
 import (

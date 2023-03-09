@@ -19,7 +19,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	_rand = rand.New(dhrand.NewLockedSource(seed))
+	_rand = rand.New(dhrand.NewLockedSource(seed)) //nolint:gosec
 }
 
 // GenSavepointName quickly generates a unique savepoint name

@@ -1,3 +1,4 @@
+// Package mysql implements a Savepointer for mysql
 package mysql
 
 import (

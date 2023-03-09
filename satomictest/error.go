@@ -1,3 +1,4 @@
+// Package satomictest provides test helper function
 package satomictest
 
 import (

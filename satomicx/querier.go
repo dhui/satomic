@@ -1,3 +1,4 @@
+// Package satomicx provides satomic capabilities that are compatible with sqlx
 package satomicx
 
 import (

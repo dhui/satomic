@@ -1,3 +1,4 @@
+// Package savepointers provides the Savepointer interface
 package savepointers
 
 // Savepointer provides an interface for creating SQL statements for managing savepoints

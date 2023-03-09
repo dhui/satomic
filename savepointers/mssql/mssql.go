@@ -1,3 +1,4 @@
+// Package mssql implements a Savepointer for mssql
 package mssql
 
 import (

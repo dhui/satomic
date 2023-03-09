@@ -1,3 +1,4 @@
+// Package sqlite implements a Savepointer for sqlite
 package sqlite
 
 import (

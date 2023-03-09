@@ -1,3 +1,4 @@
+// Package postgres implements a Savepointer for postgres
 package postgres
 
 import (

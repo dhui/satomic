@@ -1,3 +1,4 @@
+// Package savepointertest provides tests for Savepointer implementations
 package savepointertest
 
 import (
