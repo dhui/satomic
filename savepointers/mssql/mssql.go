@@ -32,6 +32,6 @@ func (sp Savepointer) Rollback(name string) string {
 }
 
 // Release releases the named savepoint. Releasing a savepoint is not implemented in MS SQL
-func (sp Savepointer) Release(name string) string {
+func (sp Savepointer) Release(name string) string { //nolint:revive
 	return ""
 }

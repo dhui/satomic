@@ -65,7 +65,7 @@ func TestNewQuerier(t *testing.T) {
 	}
 }
 
-func TestQuerierBaseImplementers(t *testing.T) {
+func TestQuerierBaseImplementers(t *testing.T) { //nolint:revive
 	f := func(qb satomicx.QuerierBase) {}
 
 	// Test that sqlx.DB implements the satomic.QuerierBase interface
