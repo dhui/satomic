@@ -13,7 +13,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible
 	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 )
 
