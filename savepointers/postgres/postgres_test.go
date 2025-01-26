@@ -43,11 +43,11 @@ func TestSavepointerPostgres(t *testing.T) {
 
 	// https://www.postgresql.org/support/versioning/
 	versions := []string{
-		"postgres:12-alpine",
-		"postgres:11-alpine",
-		"postgres:10-alpine",
-		"postgres:9.6-alpine",
-		"postgres:9.5-alpine",
+		"postgres:17-alpine",
+		"postgres:16-alpine",
+		"postgres:15-alpine",
+		"postgres:14-alpine",
+		"postgres:13-alpine",
 	}
 
 	savepointertest.TestSavepointerWithDocker(t,

@@ -50,8 +50,10 @@ func TestSavepointerMSSQL(t *testing.T) {
 	t.Parallel()
 
 	versions := []string{
-		"mcr.microsoft.com/mssql/server:2017-latest",
+		// Add back support for 2017 version once the image is fixed: https://github.com/microsoft/mssql-docker/issues/899
+		// "mcr.microsoft.com/mssql/server:2017-latest",
 		"mcr.microsoft.com/mssql/server:2019-latest",
+		"mcr.microsoft.com/mssql/server:2022-latest",
 	}
 
 	savepointertest.TestSavepointerWithDocker(t, mssql.Savepointer{}, versions, dktest.Options{Env: env,

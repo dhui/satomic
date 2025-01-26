@@ -50,9 +50,9 @@ func TestSavepointerMySQL(t *testing.T) {
 
 	// https://www.mysql.com/support/supportedplatforms/database.html
 	versions := []string{
-		"mysql:8",
-		"mysql:5.7",
-		"mysql:5.6",
+		"mysql:9",
+		"mysql:8.4",
+		"mysql:8.0",
 	}
 
 	savepointertest.TestSavepointerWithDocker(t, mysql.Savepointer{}, versions, dktest.Options{Env: env,
