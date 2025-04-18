@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -24,7 +24,7 @@ func genTestRows() *sqlmock.Rows { return sqlmock.NewRows([]string{"id"}).AddRow
 
 func genWrappedQuerier(t *testing.T, mocker func(sqlmock.Sqlmock) sqlmock.Sqlmock) (*wrappedQuerier,
 	sqlmock.Sqlmock) {
-	savepointer := mock.NewSavepointer(ioutil.Discard, true)
+	savepointer := mock.NewSavepointer(io.Discard, true)
 	db, _sqlmock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal("Error creating sqlmock:", err)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -78,7 +78,7 @@ func TestDefaultQuerierAtomicNoSavepoint(t *testing.T) {
 
 			_sqlmock = tc.mocker(_sqlmock)
 
-			q, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true), sql.TxOptions{})
+			q, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(io.Discard, true), sql.TxOptions{})
 			if err != nil {
 				t.Fatal("Error creating Querier:", err)
 			}
@@ -131,7 +131,7 @@ func TestDefaultQuerierAtomicNoSavepointPanic(t *testing.T) {
 			_sqlmock = tc.mocker(_sqlmock)
 
 			ctx := context.Background()
-			q, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(ioutil.Discard, true),
+			q, err := satomic.NewQuerier(ctx, db, mock.NewSavepointer(io.Discard, true),
 				sql.TxOptions{})
 			if err != nil {
 				t.Fatal("Error creating Querier:", err)
@@ -172,7 +172,7 @@ func TestDefaultQuerierAtomicSingleSavepointReleased(t *testing.T) {
 	expectedReleaseErr := satomictest.NewError(selectErr, releaseErr)
 
 	savepointer := func(release bool) *mock.Savepointer {
-		return mock.NewSavepointer(ioutil.Discard, release)
+		return mock.NewSavepointer(io.Discard, release)
 	}
 
 	testCases := []struct {
@@ -302,21 +302,21 @@ func TestNewQuerierWithTxCreator(t *testing.T) {
 			getDb: func() (*sql.DB, sqlmock.Sqlmock) {
 				_, _sqlmock := getDb()
 				return nil, _sqlmock
-			}, savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: satomic.DefaultTxCreator,
+			}, savepointer: mock.NewSavepointer(io.Discard, true), txCreator: satomic.DefaultTxCreator,
 			expectedErr: satomic.ErrNeedsDb},
 		{name: "nil savepointer", mocker: noopMocker, getDb: getDb, savepointer: nil,
 			txCreator: satomic.DefaultTxCreator, expectedErr: satomic.ErrNeedsSavepointer},
-		{name: "success", mocker: noopMocker, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+		{name: "success", mocker: noopMocker, getDb: getDb, savepointer: mock.NewSavepointer(io.Discard, true),
 			txCreator: satomic.DefaultTxCreator, expectedErr: nil},
 		{name: "success - nil TxCreator", mocker: noopMocker, getDb: getDb,
-			savepointer: mock.NewSavepointer(ioutil.Discard, true), txCreator: nil, expectedErr: nil},
+			savepointer: mock.NewSavepointer(io.Discard, true), txCreator: nil, expectedErr: nil},
 		{name: "error", mocker: pingErrMocker, getDb: func() (*sql.DB, sqlmock.Sqlmock) {
 			db, _sqlmock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 			if err != nil {
 				t.Fatal("Error creating sqlmock:", err)
 			}
 			return db, _sqlmock
-		}, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+		}, savepointer: mock.NewSavepointer(io.Discard, true),
 			txCreator: satomic.DefaultTxCreator, expectedErr: pingErr},
 	}
 

@@ -3,7 +3,7 @@ package satomicx_test
 import (
 	"context"
 	"database/sql"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -40,10 +40,10 @@ func TestNewQuerier(t *testing.T) {
 		{name: "nil db", mocker: noopMocker, getDb: func() (*sqlx.DB, sqlmock.Sqlmock) {
 			_, _sqlmock := getDb()
 			return nil, _sqlmock
-		}, savepointer: mock.NewSavepointer(ioutil.Discard, true), expectedErr: satomic.ErrNeedsDb},
+		}, savepointer: mock.NewSavepointer(io.Discard, true), expectedErr: satomic.ErrNeedsDb},
 		{name: "nil savepointer", mocker: noopMocker, getDb: getDb, savepointer: nil,
 			expectedErr: satomic.ErrNeedsSavepointer},
-		{name: "success", mocker: noopMocker, getDb: getDb, savepointer: mock.NewSavepointer(ioutil.Discard, true),
+		{name: "success", mocker: noopMocker, getDb: getDb, savepointer: mock.NewSavepointer(io.Discard, true),
 			expectedErr: nil},
 	}
 

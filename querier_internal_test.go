@@ -3,7 +3,7 @@ package satomic
 import (
 	"context"
 	"database/sql"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -27,7 +27,7 @@ func errsEq(a, b *Error) bool {
 }
 
 func genQuerier(t *testing.T, mocker func(sqlmock.Sqlmock) sqlmock.Sqlmock) (*querier, sqlmock.Sqlmock) {
-	savepointer := mock.NewSavepointer(ioutil.Discard, true)
+	savepointer := mock.NewSavepointer(io.Discard, true)
 	db, _sqlmock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal("Error creating sqlmock:", err)
@@ -207,7 +207,7 @@ func TestQuerierAtomicErrs(t *testing.T) {
 	}
 
 	var nilQuerier *querier
-	savepointer := mock.NewSavepointer(ioutil.Discard, true)
+	savepointer := mock.NewSavepointer(io.Discard, true)
 	db := sql.DB{}
 
 	testCases := []struct {
