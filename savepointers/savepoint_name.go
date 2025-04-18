@@ -14,8 +14,9 @@ func GenSavepointName() string {
 	b := make([]byte, savepointNumBytes)
 
 	// 2 64-bit ints is 16 bytes
-	binary.NativeEndian.PutUint64(b, rand.Uint64())
-	binary.NativeEndian.PutUint64(b[8:], rand.Uint64())
+	// ignore gosec G404 - suggesting crypto/rand over math/rand/v2
+	binary.NativeEndian.PutUint64(b, rand.Uint64())     //nolint:gosec
+	binary.NativeEndian.PutUint64(b[8:], rand.Uint64()) //nolint:gosec
 
 	return base64.RawStdEncoding.EncodeToString(b)
 }
